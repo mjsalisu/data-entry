@@ -1,0 +1,101 @@
+:root {
+  --primary: #007bff;
+  --success: #28a745;
+  --bg: #f8f9fa;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  padding: 15px;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+#camera-box {
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: none;
+  margin-top: 10px;
+}
+
+video {
+  width: 100%;
+  display: block;
+}
+
+#preview {
+  width: 100%;
+  border-radius: 8px;
+  display: none;
+  border: 3px solid var(--success);
+  margin-top: 10px;
+}
+
+.btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.btn-main {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-snap {
+  background: var(--success);
+  color: white;
+}
+
+.btn-outline {
+  background: #6c757d;
+  color: white;
+}
+
+.loader {
+  display: none;
+  text-align: center;
+  padding: 15px;
+  font-weight: bold;
+  color: var(--primary);
+}

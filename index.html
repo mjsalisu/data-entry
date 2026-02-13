@@ -1,128 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Portal</title>
-  <style>
-    :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 15px; margin: 0; display: flex; justify-content: center; }
-    .card { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); box-sizing: border-box; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
-    input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-    #camera-box { background: #000; border-radius: 8px; overflow: hidden; display: none; margin-top: 10px; }
-    video { width: 100%; display: block; }
-    #preview { width: 100%; border-radius: 8px; display: none; border: 3px solid var(--success); margin-top: 10px; }
-    .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    .btn-main { background: var(--primary); color: white; }
-    .btn-snap { background: var(--success); color: white; }
-    .btn-outline { background: #6c757d; color: white; }
-    .loader { display: none; text-align: center; padding: 15px; font-weight: bold; color: var(--primary); }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="card">
-  <h2 style="text-align:center; color:var(--primary)">Biodata Entry</h2>
-  <form id="dataForm">
-    <div class="form-group"><label>Full Name</label><input type="text" name="name" required></div>
-    <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
-    <div class="form-group"><label>Phone</label><input type="tel" name="phone" required></div>
-    
-    <div style="display: flex; gap: 10px;">
-      <div class="form-group" style="flex:1;"><label>Gender</label><select name="gender"><option>Male</option><option>Female</option></select></div>
-      <div class="form-group" style="flex:1;"><label>DOB</label><input type="date" name="dob" required></div>
-    </div>
+  <div class="card">
+    <h2 style="text-align:center; color:var(--primary)">Biodata Entry</h2>
+    <form id="dataForm">
+      <div class="form-group"><label>Full Name</label><input type="text" name="name" required></div>
+      <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+      <div class="form-group"><label>Phone</label><input type="tel" name="phone" required></div>
 
-    <div class="form-group">
-      <label>State</label>
-      <select id="state" name="state" onchange="updateLocs()" required>
-        <option value="">-- Select --</option>
-        <option value="Lagos">Lagos</option>
-        <option value="Abuja">Abuja</option>
-      </select>
-    </div>
-    <div class="form-group"><label>Location</label><select id="location" name="location" required><option value="">Select state first</option></select></div>
-    <div class="form-group"><label>Recorded By</label><input type="text" name="recordedBy" required></div>
+      <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex:1;"><label>Gender</label><select name="gender">
+            <option>Male</option>
+            <option>Female</option>
+          </select></div>
+        <div class="form-group" style="flex:1;"><label>DOB</label><input type="date" name="dob" required></div>
+      </div>
 
-    <label>Snapshot</label>
-    <button type="button" id="camBtn" class="btn btn-outline" onclick="openCam()">📸 Open Rear Camera</button>
-    <div id="camera-box">
-      <video id="video" autoplay playsinline></video>
-      <button type="button" class="btn btn-snap" onclick="capture()">Capture Photo</button>
-    </div>
-    <img id="preview">
-    <input type="hidden" name="image" id="imgData">
+      <div class="form-group">
+        <label>State</label>
+        <select id="state" name="state" onchange="updateLocs()" required>
+          <option value="">-- Select --</option>
+          <option value="Lagos">Lagos</option>
+          <option value="Abuja">Abuja</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Location</label><select id="location" name="location" required>
+          <option value="">Select state first</option>
+        </select></div>
+      <div class="form-group"><label>Recorded By</label><input type="text" name="recordedBy" required></div>
 
-    <div class="form-group" style="margin-top:15px;">
-      <label><input type="checkbox" required style="width:auto"> I agree to the consent terms.</label>
-    </div>
+      <label>Snapshot</label>
+      <button type="button" id="camBtn" class="btn btn-outline" onclick="openCam()">📸 Open Rear Camera</button>
+      <div id="camera-box">
+        <video id="video" autoplay playsinline></video>
+        <button type="button" class="btn btn-snap" onclick="capture()">Capture Photo</button>
+      </div>
+      <img id="preview">
+      <input type="hidden" name="image" id="imgData">
 
-    <div id="loader" class="loader">Uploading to Sheet...</div>
-    <button type="submit" id="subBtn" class="btn btn-main">Submit Registration</button>
-  </form>
-</div>
+      <div class="form-group" style="margin-top:15px;">
+        <label><input type="checkbox" required style="width:auto"> I agree to the consent terms.</label>
+      </div>
 
-<script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby08gDIgFkPCNVTXD9_jDkyd23EtKfSBSfoElAoxKr-RoBnvk2-IilgtwWpt_DtzFVnWw/exec"; // <--- CHANGE THIS
-  const LOCS = { "Lagos": ["Ikeja", "Lekki", "Yaba"], "Abuja": ["Wuse", "Maitama", "Gwarinpa"] };
-  let stream = null;
+      <div id="loader" class="loader">Uploading to Sheet...</div>
+      <button type="submit" id="subBtn" class="btn btn-main">Submit Registration</button>
+    </form>
+  </div>
 
-  function updateLocs() {
-    const s = document.getElementById('state').value;
-    const l = document.getElementById('location');
-    l.innerHTML = '<option value="">-- Select --</option>';
-    if(LOCS[s]) LOCS[s].forEach(i => { let o = document.createElement('option'); o.value=o.text=i; l.add(o); });
-  }
-
-  async function openCam() {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    document.getElementById('video').srcObject = stream;
-    document.getElementById('camera-box').style.display = 'block';
-    document.getElementById('camBtn').style.display = 'none';
-    document.getElementById('preview').style.display = 'none';
-  }
-
-  function capture() {
-    const v = document.getElementById('video');
-    const c = document.createElement('canvas');
-    c.width = v.videoWidth; c.height = v.videoHeight;
-    c.getContext('2d').drawImage(v, 0, 0);
-    const data = c.toDataURL('image/jpeg', 0.7);
-    document.getElementById('imgData').value = data;
-    document.getElementById('preview').src = data;
-    document.getElementById('preview').style.display = 'block';
-    document.getElementById('camera-box').style.display = 'none';
-    document.getElementById('camBtn').innerText = "🔄 Retake Photo";
-    document.getElementById('camBtn').style.display = 'block';
-    if(stream) stream.getTracks().forEach(t => t.stop());
-  }
-
-  document.getElementById('dataForm').onsubmit = function(e) {
-    e.preventDefault();
-    if(!document.getElementById('imgData').value) return alert("Photo required!");
-
-    document.getElementById('subBtn').disabled = true;
-    document.getElementById('loader').style.display = 'block';
-
-    const payload = {};
-    new FormData(this).forEach((v, k) => payload[k] = v);
-
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      mode: 'no-cors'
-    })
-    .then(() => {
-      alert("Registration Sent! Checking the sheet now...");
-      location.reload();
-    })
-    .catch(err => {
-      alert("Error: " + err.message);
-      document.getElementById('subBtn').disabled = false;
-    });
-  };
-</script>
+  <script src="config.js"></script>
+  <script src="camera.js"></script>
+  <script src="app.js"></script>
 </body>
+
 </html>
