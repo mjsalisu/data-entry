@@ -5,57 +5,528 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Portal</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="bg-light">
 
-  <div class="card">
-    <h2 style="text-align:center; color:var(--primary)">Biodata Entry</h2>
-    <form id="dataForm">
-      <div class="form-group"><label>Full Name</label><input type="text" name="name" required></div>
-      <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
-      <div class="form-group"><label>Phone</label><input type="tel" name="phone" required></div>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-xl-7">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4 p-md-5">
+            <h2 class="text-center text-primary mb-4">Jobberman SST Entry</h2>
 
-      <div style="display: flex; gap: 10px;">
-        <div class="form-group" style="flex:1;"><label>Gender</label><select name="gender">
-            <option>Male</option>
-            <option>Female</option>
-          </select></div>
-        <div class="form-group" style="flex:1;"><label>DOB</label><input type="date" name="dob" required></div>
+            <form id="dataForm" class="needs-validation" novalidate>
+
+              <!-- 1. Metadata & Consent -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Metadata & Consent</legend>
+                <div class="mb-3">
+                  <label class="form-label">Participant Consent</label>
+                  <select name="consent" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Agree">Agree</option>
+                    <option value="Disagree">Disagree</option>
+                    <option value="Unfilled (left blank)">Unfilled (left blank)</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Certificate ID</label>
+                  <input type="text" name="certificate_id" class="form-control" pattern="^(NA|\d{7})$"
+                    title="Enter the 7-digit certificate number or NA if not applicable.">
+                  <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Inputted by - Batch of Entry</label>
+                  <input type="text" name="inputted_by" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Do you have the Jobberman SST Certificate?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="jobberman_sst" value="Yes" id="sstYes">
+                      <label class="form-check-label" for="sstYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="jobberman_sst" value="No" id="sstNo">
+                      <label class="form-check-label" for="sstNo">No</label>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- 2. Learner's Biodata Information -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Learner's Biodata Information</legend>
+                <div class="mb-3">
+                  <label class="form-label">Full Name</label>
+                  <input type="text" name="name" class="form-control" required
+                    pattern="^[A-Za-z]+(?:[ '-][A-Za-z]+)*(?:[ '-][A-Za-z]+)*$">
+                  <div class="invalid-feedback">Enter valid characters and spaces only.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input type="text" name="email" class="form-control" required
+                    pattern="^(?:[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(gmail\.com|yahoo\.com)|NA)$">
+                  <div class="invalid-feedback">Enter a valid gmail/yahoo email or NA.</div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" name="phone" class="form-control" required pattern="^(?:[789][01]\d{8}|0)$">
+                    <div class="invalid-feedback">Must be exactly 10 digits long (start 7,8,9) or 0.</div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone Number Type</label>
+                    <select name="phone_type" class="form-select">
+                      <option value="">-- Select --</option>
+                      <option value="Personal">Personal</option>
+                      <option value="Family / Relative">Family / Relative</option>
+                      <option value="Unfilled (left blank)">Unfilled (left blank)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Home Address</label>
+                  <textarea name="address" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Gender</label>
+                    <div class="d-flex gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="gender" value="Male" id="genderMale">
+                        <label class="form-check-label" for="genderMale">Male</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="gender" value="Female" id="genderFemale">
+                        <label class="form-check-label" for="genderFemale">Female</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="text" name="dob" class="form-control" required placeholder="DD Mon YYYY">
+                    <div class="invalid-feedback">Date of Birth is required.</div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- 3. Education & Employment -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Education & Employment</legend>
+                <div class="mb-3">
+                  <label class="form-label">Highest Qualification</label>
+                  <select name="qualification" id="qualification" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="Vocational">Vocational</option>
+                    <option value="High School (S.S.C.E)">High School (S.S.C.E)</option>
+                    <option value="Diploma">Diploma</option>
+                    <option value="OND">OND</option>
+                    <option value="N.C.E">N.C.E</option>
+                    <option value="HND">HND</option>
+                    <option value="Undergraduate">Undergraduate</option>
+                    <option value="Degree">Degree</option>
+                    <option value="MBSS">MBSS</option>
+                    <option value="MBA / MSC">MBA / MSC</option>
+                    <option value="MPhil/PhD">MPhil/PhD</option>
+                    <option value="No Formal Education">No Formal Education</option>
+                    <option value="NA">NA</option>
+                  </select>
+                </div>
+                <div class="mb-3" id="current_level_group" style="display:none;">
+                  <label class="form-label">Current Level</label>
+                  <select name="current_level" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="Entry Level (100 Lvl)">Entry Level (100 Lvl)</option>
+                    <option value="Mid Level (200 to 300 Lvl)">Mid Level (200 to 300 Lvl)</option>
+                    <option value="Final Year">Final Year</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Employment Status</label>
+                  <select name="employment_status" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="Unemployed">Unemployed</option>
+                    <option value="Employed">Employed</option>
+                    <option value="Self-Employed">Self-Employed</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">What is your current occupation?</label>
+                  <input type="text" name="current_occupation" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Preferred Job Occupation or Industry?</label>
+                  <input type="text" name="preferred_industry" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Which 2–3 skills do you consider your strongest?</label>
+                  <input type="text" name="top_skills" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Income Range</label>
+                  <select name="income_range" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="None">None</option>
+                    <option value="< 30k">&lt; 30k</option>
+                    <option value="30k - 50k">30k - 50k</option>
+                    <option value="50k - 100k">50k - 100k</option>
+                    <option value="> 100k">&gt; 100k</option>
+                  </select>
+                </div>
+              </fieldset>
+
+              <!-- 4. Demographics & Background -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Demographics & Background</legend>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">State</label>
+                    <select id="state" name="state" class="form-select" onchange="updateLocs()" required>
+                      <option value="">-- Select --</option>
+                      <option value="Lagos">Lagos</option>
+                      <option value="Abuja">Abuja</option>
+                      <!-- Add more states if needed -->
+                    </select>
+                    <div class="invalid-feedback">Please select a state.</div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Location</label>
+                    <select id="location" name="location" class="form-select" required>
+                      <option value="">Select state first</option>
+                    </select>
+                    <div class="invalid-feedback">Please select a location.</div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Training Details (Institution | Partner | Disaggregation | Date =>
+                    Facilitator | Vols)</label>
+                  <textarea name="training_details" class="form-control" rows="2"
+                    placeholder="Enter details..."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Residential Settlement</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="settlement" value="Urban" id="settlementUrban">
+                      <label class="form-check-label" for="settlementUrban">Urban</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="settlement" value="Rural" id="settlementRural">
+                      <label class="form-check-label" for="settlementRural">Rural</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="settlement" value="Semi-Urban"
+                        id="settlementSemi">
+                      <label class="form-check-label" for="settlementSemi">Semi-Urban</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Internally Displaced Person?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="idp" value="Yes" id="idpYes">
+                      <label class="form-check-label" for="idpYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="idp" value="No" id="idpNo">
+                      <label class="form-check-label" for="idpNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Any Form of Disability?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="disability" value="Yes" id="disabilityYes">
+                      <label class="form-check-label" for="disabilityYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="disability" value="No" id="disabilityNo">
+                      <label class="form-check-label" for="disabilityNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Disability Type (if any)</label>
+                  <input type="text" name="disability_type" class="form-control">
+                </div>
+              </fieldset>
+
+              <!-- 5. Business & Tech Access -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Business & Tech Access</legend>
+                <div class="mb-3">
+                  <label class="form-label">Do You Have an Existing Business?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="existing_business" value="Yes" id="bizYes">
+                      <label class="form-check-label" for="bizYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="existing_business" value="No" id="bizNo">
+                      <label class="form-check-label" for="bizNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Nature of the Business (Industry / Sector)</label>
+                  <input type="text" name="business_nature" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Any Formal Training, Skills, or Certification?</label>
+                  <input type="text" name="formal_training" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Do You Have Access to a Smartphone or Computer?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="tech_access" value="Yes" id="techYes">
+                      <label class="form-check-label" for="techYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="tech_access" value="No" id="techNo">
+                      <label class="form-check-label" for="techNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Do You Have Internet Access at Home or Work?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="internet_access" value="Yes" id="netYes">
+                      <label class="form-check-label" for="netYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="internet_access" value="No" id="netNo">
+                      <label class="form-check-label" for="netNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Preferred Language for Follow-Up Call</label>
+                  <input type="text" name="preferred_language" class="form-control">
+                </div>
+              </fieldset>
+
+              <!-- 6. Training & Job Search -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Training & Job Search</legend>
+                <div class="mb-3">
+                  <label class="form-label">Have you ever participated in any soft skills or employability training
+                    before?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="prev_soft_skills" value="Yes"
+                        id="softSkillsYes">
+                      <label class="form-check-label" for="softSkillsYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="prev_soft_skills" value="No" id="softSkillsNo">
+                      <label class="form-check-label" for="softSkillsNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Why do you want to take this training?</label>
+                  <textarea name="training_reason" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">How confident are you in your current soft skills?</label>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="confidence_level" value="Not Confident"
+                        id="confNot">
+                      <label class="form-check-label" for="confNot">Not Confident</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="confidence_level" value="Somewhat Confident"
+                        id="confSomewhat">
+                      <label class="form-check-label" for="confSomewhat">Somewhat Confident</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="confidence_level" value="Very Confident"
+                        id="confVery">
+                      <label class="form-check-label" for="confVery">Very Confident</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">How long have you been actively looking for a job?</label>
+                  <input type="text" name="job_search_duration" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">What is the biggest challenge you face in your job search?</label>
+                  <textarea name="job_search_challenge" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">After completing this training, what is the most important outcome you want
+                    to achieve?</label>
+                  <textarea name="desired_outcome" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Do you currently have a CV/Resume?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="has_cv" value="Yes" id="cvYes">
+                      <label class="form-check-label" for="cvYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="has_cv" value="No" id="cvNo">
+                      <label class="form-check-label" for="cvNo">No</label>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- 7. Feedback -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Feedback</legend>
+                <div class="mb-3">
+                  <label class="form-label">How would you rate the overall conduciveness of the training hall?</label>
+                  <input type="number" name="hall_rating" class="form-control" min="1" max="5">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Were the training facilities and equipment adequate for the program?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="facilities_adequate" value="Yes" id="facYes">
+                      <label class="form-check-label" for="facYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="facilities_adequate" value="No" id="facNo">
+                      <label class="form-check-label" for="facNo">No</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Refreshments Served:</label>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="refreshments" value="Biscuit"
+                        id="refBiscuit">
+                      <label class="form-check-label" for="refBiscuit">Biscuit</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="refreshments" value="Drink" id="refDrink">
+                      <label class="form-check-label" for="refDrink">Drink</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="refreshments" value="Water" id="refWater">
+                      <label class="form-check-label" for="refWater">Water</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Are you satisfied with the quality of the refreshments served?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="refreshment_satisfaction" value="Yes"
+                        id="refSatYes">
+                      <label class="form-check-label" for="refSatYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="refreshment_satisfaction" value="No"
+                        id="refSatNo">
+                      <label class="form-check-label" for="refSatNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Did the availability of refreshments enhance your training
+                    experience?</label>
+                  <div class="d-flex gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="refreshment_enhanced" value="Yes"
+                        id="refEnhanceYes">
+                      <label class="form-check-label" for="refEnhanceYes">Yes</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="refreshment_enhanced" value="No"
+                        id="refEnhanceNo">
+                      <label class="form-check-label" for="refEnhanceNo">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">How would you rate the facilitator’s overall performance?</label>
+                  <input type="number" name="facilitator_rating" class="form-control" min="1" max="5">
+                </div>
+              </fieldset>
+
+              <!-- 8. Scores & Snapshots -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Scores & Snapshots</legend>
+                <div class="mb-3">
+                  <label class="form-label">Post-Test Score</label>
+                  <input type="number" name="post_test_score" class="form-control" min="0" max="15"
+                    title="Score between 0 and 15">
+                </div>
+
+                <!-- Snapshots Section -->
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Clear Snapshot of PreTest Script</label>
+                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('pretest')">📸
+                    Open Camera (PreTest)</button>
+                  <div id="camera-box-pretest" class="camera-box bg-dark rounded overflow-hidden" style="display:none;">
+                    <video id="video-pretest" autoplay playsinline class="w-100 d-block"></video>
+                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('pretest')">Capture
+                      PreTest</button>
+                  </div>
+                  <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="hidden" name="image_pretest" id="imgData-pretest">
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Clear Snapshot of PostTest Script</label>
+                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('posttest')">📸
+                    Open Camera (PostTest)</button>
+                  <div id="camera-box-posttest" class="camera-box bg-dark rounded overflow-hidden"
+                    style="display:none;">
+                    <video id="video-posttest" autoplay playsinline class="w-100 d-block"></video>
+                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('posttest')">Capture
+                      PostTest</button>
+                  </div>
+                  <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="hidden" name="image_posttest" id="imgData-posttest">
+                </div>
+
+              </fieldset>
+
+              <div class="mb-4">
+                <label class="form-label">Is this a duplicate?</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="is_duplicate" value="Yes" id="dupYes">
+                    <label class="form-check-label" for="dupYes">Yes</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="is_duplicate" value="No" id="dupNo">
+                    <label class="form-check-label" for="dupNo">No</label>
+                  </div>
+                </div>
+              </div>
+
+              <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Uploading to Sheet...
+              </div>
+              <button type="submit" id="subBtn" class="btn btn-primary w-100 py-3 fw-bold">Submit Registration</button>
+            </form>
+          </div>
+        </div>
       </div>
-
-      <div class="form-group">
-        <label>State</label>
-        <select id="state" name="state" onchange="updateLocs()" required>
-          <option value="">-- Select --</option>
-          <option value="Lagos">Lagos</option>
-          <option value="Abuja">Abuja</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Location</label><select id="location" name="location" required>
-          <option value="">Select state first</option>
-        </select></div>
-      <div class="form-group"><label>Recorded By</label><input type="text" name="recordedBy" required></div>
-
-      <label>Snapshot</label>
-      <button type="button" id="camBtn" class="btn btn-outline" onclick="openCam()">📸 Open Rear Camera</button>
-      <div id="camera-box">
-        <video id="video" autoplay playsinline></video>
-        <button type="button" class="btn btn-snap" onclick="capture()">Capture Photo</button>
-      </div>
-      <img id="preview">
-      <input type="hidden" name="image" id="imgData">
-
-      <div class="form-group" style="margin-top:15px;">
-        <label><input type="checkbox" required style="width:auto"> I agree to the consent terms.</label>
-      </div>
-
-      <div id="loader" class="loader">Uploading to Sheet...</div>
-      <button type="submit" id="subBtn" class="btn btn-main">Submit Registration</button>
-    </form>
+    </div>
   </div>
 
+  <!-- Bootstrap 5 Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="config.js"></script>
   <script src="camera.js"></script>
   <script src="app.js"></script>
