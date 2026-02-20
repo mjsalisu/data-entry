@@ -1,20 +1,14 @@
 :root {
-  --primary: #0d6efd; /* Bootstrap Primary Blue */
-  --success: #198754; /* Bootstrap Success Green */
+  --primary: #0d6efd;
+  --success: #198754;
   --bg: #f8f9fa;
 }
-
-/* 
-   Bootstrap handles general layout (container, row, col), 
-   typography, and form styling. 
-   We only add custom tweaks here.
-*/
 
 body {
   background-color: var(--bg);
 }
 
-/* Custom Camera Box Styling */
+/* Camera Box */
 .camera-box {
   background: #000;
   border-radius: 8px;
@@ -27,7 +21,7 @@ video {
   display: block;
 }
 
-/* Loader Overlay */
+/* Loader */
 .loader {
   display: none;
   font-weight: bold;
@@ -36,19 +30,21 @@ video {
   margin-top: 15px;
 }
 
-/* Adjustments for invalid-feedback if needed, 
-   though BS5 handles this well by default. */
-.invalid-feedback {
-  font-size: 0.875em;
-}
-
-/* Ensure radio groups wrapped in flex containers look good */
-.d-flex.gap-3 {
-  gap: 1rem !important;
-}
-
 /* Ensure images fit container */
 img {
   max-width: 100%;
   height: auto;
+}
+
+/* Real-time validation: smooth border colour transition */
+.form-control,
+.form-select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Draft banner */
+#draftBanner {
+  border-left: 4px solid #0dcaf0;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
 }

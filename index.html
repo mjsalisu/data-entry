@@ -21,6 +21,14 @@
 
             <form id="dataForm" class="needs-validation" novalidate>
 
+              <!-- Draft Restore Banner -->
+              <div id="draftBanner" class="alert alert-info d-flex align-items-center gap-2 mb-4"
+                style="display:none!important;">
+                <span>💾 You have unsaved progress. Would you like to restore your draft?</span>
+                <button type="button" id="restoreDraftBtn" class="btn btn-sm btn-primary ms-auto">Restore</button>
+                <button type="button" id="clearDraftBtn" class="btn btn-sm btn-outline-secondary">Discard</button>
+              </div>
+
               <!-- 1. Metadata & Consent -->
               <fieldset class="mb-4">
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Metadata & Consent</legend>
