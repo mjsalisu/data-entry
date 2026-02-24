@@ -48,3 +48,20 @@ img {
   font-size: 0.9rem;
   flex-wrap: wrap;
 }
+
+/* Dynamic fields loader */
+#dynamicFieldsLoader {
+  font-size: 0.9rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Disabled dropdown while loading */
+select:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

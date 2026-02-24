@@ -47,10 +47,7 @@
                     placeholder="7-digit certificate number or NA" required>
                   <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Inputted by - Batch of Entry</label>
-                  <input type="text" name="inputted_by" class="form-control" required>
-                </div>
+
                 <div class="mb-3">
                   <label class="form-label">Do you have the Jobberman SST Certificate?</label>
                   <select name="jobberman_sst" class="form-select" required>
@@ -73,9 +70,8 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email</label>
-                  <input type="text" name="email" class="form-control" required
-                    pattern="^(?:[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(gmail\.com|yahoo\.com)|NA)$">
-                  <div class="invalid-feedback">Enter a valid gmail/yahoo email or NA.</div>
+                  <input type="text" name="email" class="form-control" required>
+                  <div class="invalid-feedback">Enter a valid email or NA.</div>
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">
@@ -123,19 +119,19 @@
                   <label class="form-label">Highest Qualification</label>
                   <select name="qualification" id="qualification" class="form-select" required>
                     <option value="">-- Select --</option>
+                    <option value="NA">NA</option>
+                    <option value="No Formal Education">No Formal Education</option>
                     <option value="Vocational">Vocational</option>
                     <option value="High School (S.S.C.E)">High School (S.S.C.E)</option>
+                    <option value="N.C.E">N.C.E</option>
                     <option value="Diploma">Diploma</option>
                     <option value="OND">OND</option>
-                    <option value="N.C.E">N.C.E</option>
                     <option value="HND">HND</option>
                     <option value="Undergraduate">Undergraduate</option>
                     <option value="Degree">Degree</option>
                     <option value="MBSS">MBSS</option>
                     <option value="MBA / MSC">MBA / MSC</option>
                     <option value="MPhil/PhD">MPhil/PhD</option>
-                    <option value="No Formal Education">No Formal Education</option>
-                    <option value="NA">NA</option>
                   </select>
                   <div class="invalid-feedback">Please select a qualification.</div>
                 </div>
@@ -161,28 +157,31 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">What is your current occupation?</label>
-                  <input type="text" name="current_occupation" class="form-control" required>
+                  <input type="text" name="current_occupation" class="form-control"
+                    placeholder="Write NA if not applicable" required>
                   <div class="invalid-feedback">Please enter your occupation.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Preferred Job Occupation or Industry?</label>
-                  <input type="text" name="preferred_industry" class="form-control" required>
+                  <input type="text" name="preferred_industry" class="form-control"
+                    placeholder="Write NA if not applicable" required>
                   <div class="invalid-feedback">Please enter your preferred industry.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Which 2–3 skills do you consider your strongest?</label>
-                  <input type="text" name="top_skills" class="form-control" required>
+                  <input type="text" name="top_skills" class="form-control" placeholder="Write NA if not applicable"
+                    required>
                   <div class="invalid-feedback">Please enter your top skills.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Income Range</label>
                   <select name="income_range" class="form-select" required>
                     <option value="">-- Select --</option>
-                    <option value="None">None</option>
-                    <option value="< 30k">&lt; 30k</option>
-                    <option value="30k - 50k">30k - 50k</option>
-                    <option value="50k - 100k">50k - 100k</option>
-                    <option value="> 100k">&gt; 100k</option>
+                    <option value="Below 70,000">Below 70,000</option>
+                    <option value="70,000 to 150,000">70,000 to 150,000</option>
+                    <option value="150,000 to 300,000">150,000 to 300,000</option>
+                    <option value="300,000 to 500,000">300,000 to 500,000</option>
+                    <option value="500,000 and Above">500,000 and Above</option>
                   </select>
                   <div class="invalid-feedback">Please select an income range.</div>
                 </div>
@@ -191,31 +190,32 @@
               <!-- 4. Demographics & Background -->
               <fieldset class="mb-4">
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Demographics & Background</legend>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">State</label>
-                    <select id="state" name="state" class="form-select" onchange="updateLocs()" required>
-                      <option value="">-- Select --</option>
-                      <option value="Lagos">Lagos</option>
-                      <option value="Abuja">Abuja</option>
-                      <!-- Add more states if needed -->
-                    </select>
-                    <div class="invalid-feedback">Please select a state.</div>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Location</label>
-                    <select id="location" name="location" class="form-select" required>
-                      <option value="">Select state first</option>
-                    </select>
-                    <div class="invalid-feedback">Please select a location.</div>
-                  </div>
+                <!-- Cascading: State → Inputted by → Institution -->
+                <div id="dynamicFieldsLoader" class="text-center text-muted py-3" style="display:none;">
+                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                  Loading dynamic fields from sheet…
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Training Details (Institution | Partner | Disaggregation | Date =>
-                    Facilitator | Vols)</label>
-                  <textarea name="training_details" class="form-control" rows="2" placeholder="Enter details..."
-                    required></textarea>
-                  <div class="invalid-feedback">Please enter training details.</div>
+                  <label class="form-label">State</label>
+                  <select id="state" name="state" class="form-select" required>
+                    <option value="">-- Select State --</option>
+                  </select>
+                  <div class="invalid-feedback">Please select a state.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Inputted by - Batch of Entry</label>
+                  <select id="inputted_by" name="inputted_by" class="form-select" required>
+                    <option value="">Select state first</option>
+                  </select>
+                  <div class="invalid-feedback">Please select who inputted this entry.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Institution | Partner | Disaggregation | Date =&gt; Facilitator |
+                    Vols</label>
+                  <select id="training_details" name="training_details" class="form-select" required>
+                    <option value="">Select inputted by first</option>
+                  </select>
+                  <div class="invalid-feedback">Please select the training details.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Residential Settlement</label>
@@ -324,6 +324,7 @@
                     <option value="Not Confident">Not Confident</option>
                     <option value="Somewhat Confident">Somewhat Confident</option>
                     <option value="Very Confident">Very Confident</option>
+                    <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select a confidence level.</div>
                 </div>
@@ -349,6 +350,9 @@
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
+                    <option value="I don’t need a CV for the type of job I’m looking for">
+                      I don’t need a CV for the type of job I’m looking for</option>
+                    <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
@@ -368,6 +372,7 @@
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
+                    <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
@@ -397,6 +402,7 @@
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
+                    <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
@@ -407,6 +413,7 @@
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
+                    <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>

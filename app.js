@@ -1,23 +1,109 @@
 // app.js
 
 // ─────────────────────────────────────────────
-// Location Dropdown Helper
+// Global: Dynamic Fields data from DynamicFields sheet
+// Structure: { "State": { "InputtedBy": ["Institution1", ...] } }
 // ─────────────────────────────────────────────
-function updateLocs() {
+let DYNAMIC_FIELDS = {};
+
+// ─────────────────────────────────────────────
+// Cascading Dropdown Logic
+// ─────────────────────────────────────────────
+
+/**
+ * Populate the State dropdown from DYNAMIC_FIELDS keys.
+ */
+function populateStates() {
+    const stateSelect = document.getElementById('state');
+    if (!stateSelect) return;
+
+    stateSelect.innerHTML = '<option value="">-- Select State --</option>';
+    Object.keys(DYNAMIC_FIELDS).sort().forEach(state => {
+        const opt = document.createElement('option');
+        opt.value = state;
+        opt.textContent = state;
+        stateSelect.add(opt);
+    });
+}
+
+/**
+ * Called when State changes — populate "Inputted by" dropdown.
+ */
+function onStateChange() {
     const stateVal = document.getElementById('state').value;
-    const locSelect = document.getElementById('location');
-    locSelect.innerHTML = '<option value="">-- Select --</option>';
-    if (LOCS[stateVal]) {
-        LOCS[stateVal].forEach(loc => {
+    const inputtedBySelect = document.getElementById('inputted_by');
+    const trainingSelect = document.getElementById('training_details');
+
+    // Reset downstream
+    inputtedBySelect.innerHTML = '<option value="">-- Select --</option>';
+    trainingSelect.innerHTML = '<option value="">Select inputted by first</option>';
+
+    if (stateVal && DYNAMIC_FIELDS[stateVal]) {
+        const names = Object.keys(DYNAMIC_FIELDS[stateVal]).sort();
+        names.forEach(name => {
             const opt = document.createElement('option');
-            opt.value = loc;
-            opt.textContent = loc;
-            locSelect.add(opt);
+            opt.value = name;
+            opt.textContent = name;
+            inputtedBySelect.add(opt);
         });
     }
-    // Re-validate location after state changes
-    validateField(locSelect);
+
+    validateField(inputtedBySelect);
+    validateField(trainingSelect);
     saveDraft();
+}
+
+/**
+ * Called when "Inputted by" changes — populate "Institution / Training Details".
+ */
+function onInputtedByChange() {
+    const stateVal = document.getElementById('state').value;
+    const inputtedByVal = document.getElementById('inputted_by').value;
+    const trainingSelect = document.getElementById('training_details');
+
+    trainingSelect.innerHTML = '<option value="">-- Select --</option>';
+
+    if (stateVal && inputtedByVal &&
+        DYNAMIC_FIELDS[stateVal] &&
+        DYNAMIC_FIELDS[stateVal][inputtedByVal]) {
+        const institutions = DYNAMIC_FIELDS[stateVal][inputtedByVal];
+        institutions.forEach(inst => {
+            const opt = document.createElement('option');
+            opt.value = inst;
+            opt.textContent = inst;
+            trainingSelect.add(opt);
+        });
+    }
+
+    validateField(trainingSelect);
+    saveDraft();
+}
+
+/**
+ * Fetch dynamic fields from Google Apps Script and populate the State dropdown.
+ */
+async function loadDynamicFields() {
+    const loader = document.getElementById('dynamicFieldsLoader');
+    const stateSelect = document.getElementById('state');
+
+    if (loader) loader.style.display = 'block';
+    if (stateSelect) stateSelect.disabled = true;
+
+    try {
+        const resp = await fetch(SCRIPT_URL + '?action=getDynamicFields');
+        DYNAMIC_FIELDS = await resp.json();
+        populateStates();
+    } catch (err) {
+        console.error('Failed to load dynamic fields:', err);
+        // Fall back — let the user type manually if fetch fails
+        const stateEl = document.getElementById('state');
+        if (stateEl) {
+            stateEl.innerHTML = '<option value="">⚠ Failed to load — refresh page</option>';
+        }
+    } finally {
+        if (loader) loader.style.display = 'none';
+        if (stateSelect) stateSelect.disabled = false;
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -135,13 +221,18 @@ function saveDraft() {
 
 /**
  * Restores form field values from a saved draft object.
+ * Handles the cascading dropdowns by rebuilding them in sequence.
  * @param {Object} draft
  */
 function restoreDraft(draft) {
     const form = document.getElementById('dataForm');
     if (!form) return;
 
+    // First pass: restore all non-cascading fields
     Object.entries(draft).forEach(([name, value]) => {
+        // Skip cascading fields — we'll handle them after
+        if (['state', 'inputted_by', 'training_details'].includes(name)) return;
+
         // Handle checkboxes
         const checkboxes = form.querySelectorAll(`input[name="${name}"][type="checkbox"]`);
         if (checkboxes.length > 0) {
@@ -157,22 +248,44 @@ function restoreDraft(draft) {
         }
     });
 
-    // Rebuild location dropdown FIRST (state must be set already above)
-    const stateEl = form.elements['state'];
-    if (stateEl && stateEl.value) {
-        // Rebuild options
-        const stateVal = stateEl.value;
-        const locSelect = document.getElementById('location');
-        if (locSelect && typeof LOCS !== 'undefined' && LOCS[stateVal]) {
-            locSelect.innerHTML = '<option value="">-- Select --</option>';
-            LOCS[stateVal].forEach(loc => {
-                const opt = document.createElement('option');
-                opt.value = loc;
-                opt.textContent = loc;
-                locSelect.add(opt);
-            });
-            // Now restore the saved location value
-            if (draft['location']) locSelect.value = draft['location'];
+    // Second pass: rebuild cascading dropdowns
+    if (draft['state']) {
+        const stateEl = document.getElementById('state');
+        if (stateEl) {
+            stateEl.value = draft['state'];
+
+            // Rebuild "Inputted by" options for this state
+            const inputtedBySelect = document.getElementById('inputted_by');
+            if (inputtedBySelect && DYNAMIC_FIELDS[draft['state']]) {
+                inputtedBySelect.innerHTML = '<option value="">-- Select --</option>';
+                Object.keys(DYNAMIC_FIELDS[draft['state']]).sort().forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    inputtedBySelect.add(opt);
+                });
+
+                if (draft['inputted_by']) {
+                    inputtedBySelect.value = draft['inputted_by'];
+
+                    // Rebuild "Training Details" options
+                    const trainingSelect = document.getElementById('training_details');
+                    if (trainingSelect &&
+                        DYNAMIC_FIELDS[draft['state']][draft['inputted_by']]) {
+                        trainingSelect.innerHTML = '<option value="">-- Select --</option>';
+                        DYNAMIC_FIELDS[draft['state']][draft['inputted_by']].forEach(inst => {
+                            const opt = document.createElement('option');
+                            opt.value = inst;
+                            opt.textContent = inst;
+                            trainingSelect.add(opt);
+                        });
+
+                        if (draft['training_details']) {
+                            trainingSelect.value = draft['training_details'];
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -212,9 +325,36 @@ function toggleLevel() {
 // ─────────────────────────────────────────────
 // DOMContentLoaded — Wire everything up
 // ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const form = document.getElementById('dataForm');
     if (!form) return;
+
+    // ── Load dynamic data from DynamicFields sheet ──
+    await loadDynamicFields();
+
+    // ── Wire cascading dropdown events ──
+    const stateSelect = document.getElementById('state');
+    const inputtedBySelect = document.getElementById('inputted_by');
+    const trainingSelect = document.getElementById('training_details');
+
+    if (stateSelect) {
+        stateSelect.addEventListener('change', () => {
+            onStateChange();
+            validateField(stateSelect);
+        });
+    }
+    if (inputtedBySelect) {
+        inputtedBySelect.addEventListener('change', () => {
+            onInputtedByChange();
+            validateField(inputtedBySelect);
+        });
+    }
+    if (trainingSelect) {
+        trainingSelect.addEventListener('change', () => {
+            validateField(trainingSelect);
+            saveDraft();
+        });
+    }
 
     // ── Qualification logic ──
     const qualSelect = document.getElementById('qualification');
@@ -314,7 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Check validity without adding was-validated class
-        // (was-validated uses CSS :valid/:invalid which greens optional empty fields)
         if (!this.checkValidity()) {
             event.stopPropagation();
 

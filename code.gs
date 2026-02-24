@@ -72,9 +72,8 @@ function doPost(e) {
 
       // ── Demographics & Background ───────────
       data.state              || '',    // U: State
-      data.location           || '',    // V: Location
-      data.training_details   || '',    // W: Training Details
-      data.settlement         || '',    // X: Residential Settlement
+      data.training_details   || '',    // V: Training Details (Institution|Partner|etc)
+      data.settlement         || '',    // W: Residential Settlement
       data.idp                || '',    // Y: Internally Displaced Person?
       data.disability         || '',    // Z: Any Form of Disability?
       data.disability_type    || '',    // AA: Disability Type
@@ -127,7 +126,47 @@ function doPost(e) {
   }
 }
 
-// Dummy doGet to allow the script to be deployed as a Web App
-function doGet() {
-  return HtmlService.createHtmlOutput("Jobberman SST Data Entry API is running.");
+/**
+ * Handles GET requests.
+ * ?action=getDynamicFields → returns DynamicFields sheet data as JSON
+ *   Structure: { "StateName": { "InputtedByName": ["Institution1", ...] }, ... }
+ */
+function doGet(e) {
+  var action = (e && e.parameter && e.parameter.action) || '';
+
+  if (action === 'getDynamicFields') {
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('DynamicFields');
+
+    if (!sheet) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ error: 'DynamicFields sheet not found' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var rows   = sheet.getDataRange().getValues();
+    var result = {};
+
+    // Row 0 = header row, skip it
+    for (var i = 1; i < rows.length; i++) {
+      var state       = (rows[i][0] || '').toString().trim();  // Col A
+      var inputtedBy  = (rows[i][1] || '').toString().trim();  // Col B
+      var institution = (rows[i][2] || '').toString().trim();  // Col C
+
+      if (!state) continue;
+
+      if (!result[state]) result[state] = {};
+      if (!result[state][inputtedBy]) result[state][inputtedBy] = [];
+
+      if (institution && result[state][inputtedBy].indexOf(institution) === -1) {
+        result[state][inputtedBy].push(institution);
+      }
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return HtmlService.createHtmlOutput('Jobberman SST Data Entry API is running.');
 }
