@@ -291,6 +291,10 @@ function restoreDraft(draft) {
 
     // Re-trigger conditional field logic
     toggleLevel();
+    toggleJobbermanNote();
+    toggleDisability();
+    toggleDisabilityOther();
+    toggleLanguageOther();
 
     // Validate all restored fields after a short delay
     setTimeout(() => {
@@ -319,6 +323,71 @@ function toggleLevel() {
             levelSelect.required = false;
             if (qualSelect.value !== '') levelSelect.value = '';
         }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Jobberman SST → cross-check note toggle
+// ─────────────────────────────────────────────
+function toggleJobbermanNote() {
+    const sstSelect = document.getElementById('jobberman_sst');
+    const note = document.getElementById('jobberman_sst_note');
+    if (!sstSelect || !note) return;
+    note.style.display = sstSelect.value === 'Yes' ? 'block' : 'none';
+}
+
+// ─────────────────────────────────────────────
+// Disability → Disability Type toggle
+// ─────────────────────────────────────────────
+function toggleDisability() {
+    const disSelect = document.getElementById('disability');
+    const typeGroup = document.getElementById('disability_type_group');
+    const otherGroup = document.getElementById('disability_type_other_group');
+    const typeSelect = document.getElementById('disability_type');
+    const otherInput = document.getElementById('disability_type_other');
+    if (!disSelect || !typeGroup) return;
+
+    if (disSelect.value === 'Yes') {
+        typeGroup.style.display = 'block';
+        if (typeSelect) typeSelect.required = true;
+    } else {
+        typeGroup.style.display = 'none';
+        if (otherGroup) otherGroup.style.display = 'none';
+        if (typeSelect) { typeSelect.required = false; typeSelect.value = ''; }
+        if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
+}
+
+function toggleDisabilityOther() {
+    const typeSelect = document.getElementById('disability_type');
+    const otherGroup = document.getElementById('disability_type_other_group');
+    const otherInput = document.getElementById('disability_type_other');
+    if (!typeSelect || !otherGroup) return;
+
+    if (typeSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+        if (otherInput) otherInput.required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Language "Other" checkbox → text input toggle
+// ─────────────────────────────────────────────
+function toggleLanguageOther() {
+    const otherCb = document.getElementById('langOther');
+    const otherGroup = document.getElementById('lang_other_group');
+    const otherInput = document.getElementById('lang_other_input');
+    if (!otherCb || !otherGroup) return;
+
+    if (otherCb.checked) {
+        otherGroup.style.display = 'block';
+        if (otherInput) otherInput.required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        if (otherInput) { otherInput.required = false; otherInput.value = ''; }
     }
 }
 
@@ -361,6 +430,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (qualSelect) {
         qualSelect.addEventListener('change', () => { toggleLevel(); validateField(qualSelect); saveDraft(); });
         toggleLevel();
+    }
+
+    // ── Jobberman SST cross-check note ──
+    const sstSelect = document.getElementById('jobberman_sst');
+    if (sstSelect) {
+        sstSelect.addEventListener('change', () => { toggleJobbermanNote(); validateField(sstSelect); saveDraft(); });
+        toggleJobbermanNote();
+    }
+
+    // ── Disability toggle ──
+    const disSelect = document.getElementById('disability');
+    if (disSelect) {
+        disSelect.addEventListener('change', () => { toggleDisability(); validateField(disSelect); saveDraft(); });
+        toggleDisability();
+    }
+    const disTypeSelect = document.getElementById('disability_type');
+    if (disTypeSelect) {
+        disTypeSelect.addEventListener('change', () => { toggleDisabilityOther(); validateField(disTypeSelect); saveDraft(); });
+        toggleDisabilityOther();
+    }
+
+    // ── Language "Other" checkbox toggle ──
+    const langOtherCb = document.getElementById('langOther');
+    if (langOtherCb) {
+        langOtherCb.addEventListener('change', () => { toggleLanguageOther(); saveDraft(); });
+        toggleLanguageOther();
     }
 
     // ── Date of Birth auto-format on blur ──
