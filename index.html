@@ -4,9 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Portal</title>
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Data Entry Portal</title>
+  <link href="dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -45,25 +44,21 @@
                 <div class="mb-3">
                   <label class="form-label">Certificate ID</label>
                   <input type="text" name="certificate_id" class="form-control" pattern="^(NA|\d{7})$"
-                    title="Enter the 7-digit certificate number or NA if not applicable.">
+                    placeholder="7-digit certificate number or NA" required>
                   <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Inputted by - Batch of Entry</label>
-                  <input type="text" name="inputted_by" class="form-control">
+                  <input type="text" name="inputted_by" class="form-control" required>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Do you have the Jobberman SST Certificate?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="jobberman_sst" value="Yes" id="sstYes">
-                      <label class="form-check-label" for="sstYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="jobberman_sst" value="No" id="sstNo">
-                      <label class="form-check-label" for="sstNo">No</label>
-                    </div>
-                  </div>
+                  <select name="jobberman_sst" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
               </fieldset>
 
@@ -90,35 +85,32 @@
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Phone Number Type</label>
-                    <select name="phone_type" class="form-select">
+                    <select name="phone_type" class="form-select" required>
                       <option value="">-- Select --</option>
                       <option value="Personal">Personal</option>
                       <option value="Family / Relative">Family / Relative</option>
                       <option value="Unfilled (left blank)">Unfilled (left blank)</option>
                     </select>
+                    <div class="invalid-feedback">Please select an option.</div>
                   </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Home Address</label>
-                  <textarea name="address" class="form-control" rows="2"></textarea>
+                  <textarea name="address" class="form-control" rows="2" required></textarea>
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Gender</label>
-                    <div class="d-flex gap-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="gender" value="Male" id="genderMale">
-                        <label class="form-check-label" for="genderMale">Male</label>
-                      </div>
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="gender" value="Female" id="genderFemale">
-                        <label class="form-check-label" for="genderFemale">Female</label>
-                      </div>
-                    </div>
+                    <select name="gender" class="form-select" required>
+                      <option value="">-- Select --</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your gender.</div>
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Date of Birth</label>
-                    <input type="text" name="dob" class="form-control" required placeholder="DD Mon YYYY">
+                    <input type="date" name="dob" class="form-control" required placeholder="DD Mon YYYY">
                     <div class="invalid-feedback">Date of Birth is required.</div>
                   </div>
                 </div>
@@ -129,7 +121,7 @@
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Education & Employment</legend>
                 <div class="mb-3">
                   <label class="form-label">Highest Qualification</label>
-                  <select name="qualification" id="qualification" class="form-select">
+                  <select name="qualification" id="qualification" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Vocational">Vocational</option>
                     <option value="High School (S.S.C.E)">High School (S.S.C.E)</option>
@@ -145,40 +137,46 @@
                     <option value="No Formal Education">No Formal Education</option>
                     <option value="NA">NA</option>
                   </select>
+                  <div class="invalid-feedback">Please select a qualification.</div>
                 </div>
                 <div class="mb-3" id="current_level_group" style="display:none;">
                   <label class="form-label">Current Level</label>
-                  <select name="current_level" class="form-select">
+                  <select name="current_level" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Entry Level (100 Lvl)">Entry Level (100 Lvl)</option>
                     <option value="Mid Level (200 to 300 Lvl)">Mid Level (200 to 300 Lvl)</option>
                     <option value="Final Year">Final Year</option>
                   </select>
+                  <div class="invalid-feedback">Please select your current level.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Employment Status</label>
-                  <select name="employment_status" class="form-select">
+                  <select name="employment_status" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Unemployed">Unemployed</option>
                     <option value="Employed">Employed</option>
                     <option value="Self-Employed">Self-Employed</option>
                   </select>
+                  <div class="invalid-feedback">Please select your employment status.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">What is your current occupation?</label>
-                  <input type="text" name="current_occupation" class="form-control">
+                  <input type="text" name="current_occupation" class="form-control" required>
+                  <div class="invalid-feedback">Please enter your occupation.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Preferred Job Occupation or Industry?</label>
-                  <input type="text" name="preferred_industry" class="form-control">
+                  <input type="text" name="preferred_industry" class="form-control" required>
+                  <div class="invalid-feedback">Please enter your preferred industry.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Which 2–3 skills do you consider your strongest?</label>
-                  <input type="text" name="top_skills" class="form-control">
+                  <input type="text" name="top_skills" class="form-control" required>
+                  <div class="invalid-feedback">Please enter your top skills.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Income Range</label>
-                  <select name="income_range" class="form-select">
+                  <select name="income_range" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="None">None</option>
                     <option value="< 30k">&lt; 30k</option>
@@ -186,6 +184,7 @@
                     <option value="50k - 100k">50k - 100k</option>
                     <option value="> 100k">&gt; 100k</option>
                   </select>
+                  <div class="invalid-feedback">Please select an income range.</div>
                 </div>
               </fieldset>
 
@@ -214,56 +213,42 @@
                 <div class="mb-3">
                   <label class="form-label">Training Details (Institution | Partner | Disaggregation | Date =>
                     Facilitator | Vols)</label>
-                  <textarea name="training_details" class="form-control" rows="2"
-                    placeholder="Enter details..."></textarea>
+                  <textarea name="training_details" class="form-control" rows="2" placeholder="Enter details..."
+                    required></textarea>
+                  <div class="invalid-feedback">Please enter training details.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Residential Settlement</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="settlement" value="Urban" id="settlementUrban">
-                      <label class="form-check-label" for="settlementUrban">Urban</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="settlement" value="Rural" id="settlementRural">
-                      <label class="form-check-label" for="settlementRural">Rural</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="settlement" value="Semi-Urban"
-                        id="settlementSemi">
-                      <label class="form-check-label" for="settlementSemi">Semi-Urban</label>
-                    </div>
-                  </div>
+                  <select name="settlement" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Urban">Urban</option>
+                    <option value="Rural">Rural</option>
+                    <option value="Semi-Urban">Semi-Urban</option>
+                  </select>
+                  <div class="invalid-feedback">Please select a settlement.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Internally Displaced Person?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="idp" value="Yes" id="idpYes">
-                      <label class="form-check-label" for="idpYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="idp" value="No" id="idpNo">
-                      <label class="form-check-label" for="idpNo">No</label>
-                    </div>
-                  </div>
+                  <select name="idp" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Any Form of Disability?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="disability" value="Yes" id="disabilityYes">
-                      <label class="form-check-label" for="disabilityYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="disability" value="No" id="disabilityNo">
-                      <label class="form-check-label" for="disabilityNo">No</label>
-                    </div>
-                  </div>
+                  <select name="disability" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Disability Type (if any)</label>
-                  <input type="text" name="disability_type" class="form-control">
+                  <input type="text" name="disability_type" class="form-control" required>
+                  <div class="invalid-feedback">Please enter disability type or NA.</div>
                 </div>
               </fieldset>
 
@@ -272,54 +257,45 @@
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Business & Tech Access</legend>
                 <div class="mb-3">
                   <label class="form-label">Do You Have an Existing Business?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="existing_business" value="Yes" id="bizYes">
-                      <label class="form-check-label" for="bizYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="existing_business" value="No" id="bizNo">
-                      <label class="form-check-label" for="bizNo">No</label>
-                    </div>
-                  </div>
+                  <select name="existing_business" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Nature of the Business (Industry / Sector)</label>
-                  <input type="text" name="business_nature" class="form-control">
+                  <input type="text" name="business_nature" class="form-control" required>
+                  <div class="invalid-feedback">Please enter the nature of your business.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Any Formal Training, Skills, or Certification?</label>
-                  <input type="text" name="formal_training" class="form-control">
+                  <input type="text" name="formal_training" class="form-control" required>
+                  <div class="invalid-feedback">Please enter any formal training or NA.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Do You Have Access to a Smartphone or Computer?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="tech_access" value="Yes" id="techYes">
-                      <label class="form-check-label" for="techYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="tech_access" value="No" id="techNo">
-                      <label class="form-check-label" for="techNo">No</label>
-                    </div>
-                  </div>
+                  <select name="tech_access" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Do You Have Internet Access at Home or Work?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="internet_access" value="Yes" id="netYes">
-                      <label class="form-check-label" for="netYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="internet_access" value="No" id="netNo">
-                      <label class="form-check-label" for="netNo">No</label>
-                    </div>
-                  </div>
+                  <select name="internet_access" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Preferred Language for Follow-Up Call</label>
-                  <input type="text" name="preferred_language" class="form-control">
+                  <input type="text" name="preferred_language" class="form-control" required>
+                  <div class="invalid-feedback">Please enter your preferred language.</div>
                 </div>
               </fieldset>
 
@@ -329,67 +305,52 @@
                 <div class="mb-3">
                   <label class="form-label">Have you ever participated in any soft skills or employability training
                     before?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="prev_soft_skills" value="Yes"
-                        id="softSkillsYes">
-                      <label class="form-check-label" for="softSkillsYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="prev_soft_skills" value="No" id="softSkillsNo">
-                      <label class="form-check-label" for="softSkillsNo">No</label>
-                    </div>
-                  </div>
+                  <select name="prev_soft_skills" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Why do you want to take this training?</label>
-                  <textarea name="training_reason" class="form-control" rows="2"></textarea>
+                  <textarea name="training_reason" class="form-control" rows="2" required></textarea>
+                  <div class="invalid-feedback">Please enter your reason.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">How confident are you in your current soft skills?</label>
-                  <div class="d-flex flex-wrap gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="confidence_level" value="Not Confident"
-                        id="confNot">
-                      <label class="form-check-label" for="confNot">Not Confident</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="confidence_level" value="Somewhat Confident"
-                        id="confSomewhat">
-                      <label class="form-check-label" for="confSomewhat">Somewhat Confident</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="confidence_level" value="Very Confident"
-                        id="confVery">
-                      <label class="form-check-label" for="confVery">Very Confident</label>
-                    </div>
-                  </div>
+                  <select name="confidence_level" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Not Confident">Not Confident</option>
+                    <option value="Somewhat Confident">Somewhat Confident</option>
+                    <option value="Very Confident">Very Confident</option>
+                  </select>
+                  <div class="invalid-feedback">Please select a confidence level.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">How long have you been actively looking for a job?</label>
-                  <input type="text" name="job_search_duration" class="form-control">
+                  <input type="text" name="job_search_duration" class="form-control" required>
+                  <div class="invalid-feedback">Please enter duration.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">What is the biggest challenge you face in your job search?</label>
-                  <textarea name="job_search_challenge" class="form-control" rows="2"></textarea>
+                  <textarea name="job_search_challenge" class="form-control" rows="2" required></textarea>
+                  <div class="invalid-feedback">Please enter your challenge.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">After completing this training, what is the most important outcome you want
                     to achieve?</label>
-                  <textarea name="desired_outcome" class="form-control" rows="2"></textarea>
+                  <textarea name="desired_outcome" class="form-control" rows="2" required></textarea>
+                  <div class="invalid-feedback">Please enter your desired outcome.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Do you currently have a CV/Resume?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="has_cv" value="Yes" id="cvYes">
-                      <label class="form-check-label" for="cvYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="has_cv" value="No" id="cvNo">
-                      <label class="form-check-label" for="cvNo">No</label>
-                    </div>
-                  </div>
+                  <select name="has_cv" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
               </fieldset>
 
@@ -398,24 +359,21 @@
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Feedback</legend>
                 <div class="mb-3">
                   <label class="form-label">How would you rate the overall conduciveness of the training hall?</label>
-                  <input type="number" name="hall_rating" class="form-control" min="1" max="5">
+                  <input type="number" name="hall_rating" class="form-control" min="1" max="5" required>
+                  <div class="invalid-feedback">Please rate the hall (1-5).</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Were the training facilities and equipment adequate for the program?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="facilities_adequate" value="Yes" id="facYes">
-                      <label class="form-check-label" for="facYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="facilities_adequate" value="No" id="facNo">
-                      <label class="form-check-label" for="facNo">No</label>
-                    </div>
-                  </div>
+                  <select name="facilities_adequate" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Refreshments Served:</label>
+                  <label class="form-label">Refreshments Served (Select at least one or N/A):</label>
                   <div class="d-flex flex-wrap gap-3">
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="refreshments" value="Biscuit"
@@ -435,38 +393,27 @@
 
                 <div class="mb-3">
                   <label class="form-label">Are you satisfied with the quality of the refreshments served?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="refreshment_satisfaction" value="Yes"
-                        id="refSatYes">
-                      <label class="form-check-label" for="refSatYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="refreshment_satisfaction" value="No"
-                        id="refSatNo">
-                      <label class="form-check-label" for="refSatNo">No</label>
-                    </div>
-                  </div>
+                  <select name="refreshment_satisfaction" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Did the availability of refreshments enhance your training
                     experience?</label>
-                  <div class="d-flex gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="refreshment_enhanced" value="Yes"
-                        id="refEnhanceYes">
-                      <label class="form-check-label" for="refEnhanceYes">Yes</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="radio" name="refreshment_enhanced" value="No"
-                        id="refEnhanceNo">
-                      <label class="form-check-label" for="refEnhanceNo">No</label>
-                    </div>
-                  </div>
+                  <select name="refreshment_enhanced" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">How would you rate the facilitator’s overall performance?</label>
-                  <input type="number" name="facilitator_rating" class="form-control" min="1" max="5">
+                  <input type="number" name="facilitator_rating" class="form-control" min="1" max="5" required>
+                  <div class="invalid-feedback">Please rate the facilitator (1-5).</div>
                 </div>
               </fieldset>
 
@@ -476,7 +423,8 @@
                 <div class="mb-3">
                   <label class="form-label">Post-Test Score</label>
                   <input type="number" name="post_test_score" class="form-control" min="0" max="15"
-                    title="Score between 0 and 15">
+                    title="Score between 0 and 15" required>
+                  <div class="invalid-feedback">Please enter the post-test score (0-15).</div>
                 </div>
 
                 <!-- Snapshots Section -->
@@ -490,7 +438,8 @@
                       PreTest</button>
                   </div>
                   <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
-                  <input type="hidden" name="image_pretest" id="imgData-pretest">
+                  <input type="hidden" name="image_pretest" id="imgData-pretest" required>
+                  <div class="invalid-feedback">Please capture a snapshot of the PreTest script.</div>
                 </div>
 
                 <div class="mb-3">
@@ -504,23 +453,18 @@
                       PostTest</button>
                   </div>
                   <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
-                  <input type="hidden" name="image_posttest" id="imgData-posttest">
+                  <input type="hidden" name="image_posttest" id="imgData-posttest" required>
+                  <div class="invalid-feedback">Please capture a snapshot of the PostTest script.</div>
                 </div>
 
               </fieldset>
 
               <div class="mb-4">
                 <label class="form-label">Is this a duplicate?</label>
-                <div class="d-flex gap-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="is_duplicate" value="Yes" id="dupYes">
-                    <label class="form-check-label" for="dupYes">Yes</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="is_duplicate" value="No" id="dupNo">
-                    <label class="form-check-label" for="dupNo">No</label>
-                  </div>
-                </div>
+                <select name="is_duplicate" class="form-select">
+                  <option value="">-- Select --</option>
+                  <option value="Yes">Yes</option>
+                </select>
               </div>
 
               <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Uploading to Sheet...
@@ -533,8 +477,7 @@
     </div>
   </div>
 
-  <!-- Bootstrap 5 Bundle with Popper -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="dist/js/bootstrap.bundle.min.js"></script>
   <script src="config.js"></script>
   <script src="camera.js"></script>
   <script src="app.js"></script>

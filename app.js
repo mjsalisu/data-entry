@@ -74,7 +74,7 @@ function validateField(field) {
  * @param {boolean} valid
  */
 function applyValidClass(field, valid) {
-    if (field.type === 'radio' || field.type === 'checkbox') return;
+    if (field.type === 'checkbox') return;
 
     field.classList.remove('is-valid', 'is-invalid');
 
@@ -91,7 +91,6 @@ function applyValidClass(field, valid) {
         // Required but empty — always red
         field.classList.add('is-invalid');
     }
-    // Optional field that is empty or on placeholder: no colour shown
 }
 
 // ─────────────────────────────────────────────
@@ -130,11 +129,6 @@ function saveDraft() {
             draft[k] = vals;
         });
 
-        // Store radio values manually because FormData only keeps one
-        form.querySelectorAll('input[type="radio"]:checked').forEach(r => {
-            draft[r.name] = r.value;
-        });
-
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     }, 500);
 }
@@ -148,13 +142,6 @@ function restoreDraft(draft) {
     if (!form) return;
 
     Object.entries(draft).forEach(([name, value]) => {
-        // Handle radio buttons
-        const radios = form.querySelectorAll(`input[name="${name}"][type="radio"]`);
-        if (radios.length > 0) {
-            radios.forEach(r => { r.checked = (r.value === value); });
-            return;
-        }
-
         // Handle checkboxes
         const checkboxes = form.querySelectorAll(`input[name="${name}"][type="checkbox"]`);
         if (checkboxes.length > 0) {
