@@ -37,7 +37,14 @@ function capture(type) {
     canvas.getContext('2d').drawImage(video, 0, 0);
 
     const data = canvas.toDataURL('image/jpeg', 0.7);
-    document.getElementById('imgData' + padding).value = data;
+    const imgInput = document.getElementById('imgData' + padding);
+    imgInput.value = data;
+
+    // Hide validation message for this snapshot
+    const msgEl = document.getElementById(type + '_validation_msg');
+    if (msgEl) msgEl.style.display = 'none';
+    // Trigger validation update
+    if (typeof validateField === 'function') validateField(imgInput);
 
     const preview = document.getElementById('preview' + padding);
     preview.src = data;

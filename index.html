@@ -345,8 +345,9 @@
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Preferred Language for Follow-Up Call (select all that apply)</label>
+                <div class="mb-3" id="lang_group">
+                  <label class="form-label">Preferred Language for Follow-Up Call (select all that apply) <span
+                      class="text-danger">*</span></label>
                   <div class="d-flex flex-wrap gap-3">
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="preferred_language" value="English"
@@ -384,6 +385,8 @@
                       <label class="form-check-label" for="langOther">Other</label>
                     </div>
                   </div>
+                  <div id="lang_validation_msg" class="text-danger small mt-1" style="display:none;">Please select at
+                    least one language.</div>
                   <div id="lang_other_group" class="mt-2" style="display:none;">
                     <input type="text" id="lang_other_input" name="preferred_language_other" class="form-control"
                       placeholder="Specify other language">
@@ -595,8 +598,9 @@
                 </div>
 
                 <!-- Snapshots Section -->
-                <div class="mb-3">
-                  <label class="form-label fw-bold">Snapshot of PreTest Script</label>
+                <div class="mb-3" id="pretest_snapshot_group">
+                  <label class="form-label fw-bold">Snapshot of PreTest Script <span
+                      class="text-danger">*</span></label>
                   <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('pretest')">📸
                     Open Camera (PreTest)</button>
                   <div id="camera-box-pretest" class="camera-box bg-dark rounded overflow-hidden" style="display:none;">
@@ -606,11 +610,13 @@
                   </div>
                   <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
                   <input type="hidden" name="image_pretest" id="imgData-pretest" required>
-                  <div class="invalid-feedback">Please capture a snapshot of the PreTest script.</div>
+                  <div id="pretest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
+                    PreTest script.</div>
                 </div>
 
-                <div class="mb-3">
-                  <label class="form-label fw-bold">Snapshot of PostTest Script</label>
+                <div class="mb-3" id="posttest_snapshot_group">
+                  <label class="form-label fw-bold">Snapshot of PostTest Script <span
+                      class="text-danger">*</span></label>
                   <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('posttest')">📸
                     Open Camera (PostTest)</button>
                   <div id="camera-box-posttest" class="camera-box bg-dark rounded overflow-hidden"
@@ -621,7 +627,8 @@
                   </div>
                   <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
                   <input type="hidden" name="image_posttest" id="imgData-posttest" required>
-                  <div class="invalid-feedback">Please capture a snapshot of the PostTest script.</div>
+                  <div id="posttest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
+                    PostTest script.</div>
                 </div>
 
               </fieldset>

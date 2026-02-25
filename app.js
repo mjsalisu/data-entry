@@ -190,10 +190,23 @@ function validateField(field) {
     if (field.name === 'preferred_language' && field.type === 'checkbox') {
         const langBoxes = form.querySelectorAll('input[name="preferred_language"]');
         const anyChecked = Array.from(langBoxes).some(cb => cb.checked);
+        const langMsg = document.getElementById('lang_validation_msg');
         // Apply visual style to all language checkboxes as a group
         langBoxes.forEach(cb => {
             cb.setCustomValidity(anyChecked ? '' : 'Please select at least one language.');
         });
+        // Show/hide the visible error message
+        if (langMsg) langMsg.style.display = anyChecked ? 'none' : 'block';
+        return;
+    }
+
+    // ── Snapshot hidden inputs — show/hide validation message ──
+    if (field.name === 'image_pretest' || field.name === 'image_posttest') {
+        const key = field.name === 'image_pretest' ? 'pretest' : 'posttest';
+        const msgEl = document.getElementById(key + '_validation_msg');
+        if (msgEl) {
+            msgEl.style.display = field.value ? 'none' : 'block';
+        }
         return;
     }
 
