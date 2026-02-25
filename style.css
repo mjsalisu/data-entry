@@ -42,11 +42,53 @@ img {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Draft banner */
+/* Draft Restore Banner */
 #draftBanner {
   border-left: 4px solid #0dcaf0;
   font-size: 0.9rem;
   flex-wrap: wrap;
+}
+
+/* --- Floating Draft Indicator (Google Forms style) --- */
+.draft-indicator {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  background: #323232;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1050;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+.draft-indicator.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.draft-indicator.saving { background: #555; }
+.draft-indicator.saved  { background: #2e7d32; }
+.draft-indicator.error  { background: #c62828; }
+
+.draft-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+@keyframes spin-icon {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.draft-icon.spinning {
+  display: inline-block;
+  animation: spin-icon 0.8s linear infinite;
 }
 
 /* Dynamic fields loader */

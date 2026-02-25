@@ -248,17 +248,53 @@ function applyValidClass(field, valid) {
 }
 
 // ─────────────────────────────────────────────
-// Session Draft — localStorage
+// Session Draft — localStorage with floating indicator
 // ─────────────────────────────────────────────
 const DRAFT_KEY = 'jobberman_form_draft';
 let saveTimer = null;
+let indicatorTimer = null;
+
+/**
+ * Shows the floating draft indicator with a status.
+ * @param {'saving'|'saved'|'error'} status
+ * @param {string} text
+ */
+function showDraftStatus(status, text) {
+    const indicator = document.getElementById('draftIndicator');
+    const icon = document.getElementById('draftIcon');
+    const label = document.getElementById('draftText');
+    if (!indicator) return;
+
+    clearTimeout(indicatorTimer);
+
+    // Set visual state
+    indicator.className = 'draft-indicator ' + status;
+    icon.className = 'draft-icon' + (status === 'saving' ? ' spinning' : '');
+    icon.textContent = status === 'saving' ? '⏳' : status === 'saved' ? '✅' : '❌';
+    label.textContent = text;
+
+    // Show
+    indicator.style.display = 'flex';
+    requestAnimationFrame(() => indicator.classList.add('visible'));
+
+    // Auto-hide after 2s (only for 'saved')
+    if (status === 'saved') {
+        indicatorTimer = setTimeout(() => {
+            indicator.classList.remove('visible');
+            setTimeout(() => { indicator.style.display = 'none'; }, 300);
+        }, 2000);
+    }
+}
 
 /**
  * Collects all named form field values and saves them to localStorage.
  * Debounced by 500ms to avoid excessive writes on fast typing.
+ * Shows a floating save indicator.
  */
 function saveDraft() {
     clearTimeout(saveTimer);
+    showDraftStatus('saving', 'Saving draft…');
+
     saveTimer = setTimeout(() => {
         const form = document.getElementById('dataForm');
         if (!form) return;
@@ -283,8 +319,76 @@ function saveDraft() {
             draft[k] = vals;
         });
 
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            showDraftStatus('saved', 'Draft saved');
+        } catch (e) {
+            showDraftStatus('error', 'Save failed');
+        }
     }, 500);
+}
+
+/**
+ * Discards the draft: clears localStorage, resets the form,
+ * resets all cascading/conditional fields, and clears validation.
+ */
+function discardDraft() {
+    // Clear stored draft
+    localStorage.removeItem(DRAFT_KEY);
+
+    const form = document.getElementById('dataForm');
+    if (!form) return;
+
+    // Reset native form
+    form.reset();
+
+    // Clear hidden inputs (snapshots)
+    form.querySelectorAll('input[type="hidden"]').forEach(h => { h.value = ''; });
+
+    // Reset cascading dropdowns
+    const inputtedBySelect = document.getElementById('inputted_by');
+    const trainingSelect = document.getElementById('training_details');
+    const biscuitSelect = document.getElementById('ref_biscuit');
+    const drinkSelect = document.getElementById('ref_drink');
+
+    if (inputtedBySelect) inputtedBySelect.innerHTML = '<option value="">-- Select --</option>';
+    if (trainingSelect) trainingSelect.innerHTML = '<option value="">Select inputted by first</option>';
+    if (biscuitSelect) biscuitSelect.innerHTML = '<option value="">Select state first</option>';
+    if (drinkSelect) drinkSelect.innerHTML = '<option value="">Select state first</option>';
+
+    // Hide snapshot previews
+    ['pretest', 'posttest'].forEach(key => {
+        const preview = document.getElementById('preview-' + key);
+        const cameraBox = document.getElementById('camera-box-' + key);
+        const valMsg = document.getElementById(key + '_validation_msg');
+        if (preview) { preview.style.display = 'none'; preview.src = ''; }
+        if (cameraBox) cameraBox.style.display = 'none';
+        if (valMsg) valMsg.style.display = 'block';
+    });
+
+    // Re-trigger conditional field toggles (they will hide/reset sub-fields)
+    toggleLevel();
+    toggleJobbermanNote();
+    toggleDisability();
+    toggleDisabilityOther();
+    toggleLanguageOther();
+
+    // Clear all validation styling
+    form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+        el.classList.remove('is-valid', 'is-invalid');
+    });
+
+    // Reset language validation message
+    const langMsg = document.getElementById('lang_validation_msg');
+    if (langMsg) langMsg.style.display = 'none';
+
+    // Hide the draft banner
+    const banner = document.getElementById('draftBanner');
+    if (banner) banner.style.setProperty('display', 'none', 'important');
+
+    // Hide the indicator
+    const indicator = document.getElementById('draftIndicator');
+    if (indicator) { indicator.classList.remove('visible'); indicator.style.display = 'none'; }
 }
 
 /**
@@ -310,8 +414,10 @@ function restoreDraft(draft) {
         }
 
         // Handle regular inputs, selects, textareas
+        // Note: form.elements[name] returns a RadioNodeList for radio groups (no nodeType).
+        // For single elements (input, select, textarea) it returns the element with nodeType === 1.
         const field = form.elements[name];
-        if (field && !field.length) {
+        if (field && field.nodeType === 1) {
             field.value = value || '';
         }
     });
@@ -587,17 +693,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
 
             if (hasContent) {
-                draftBanner.style.removeProperty('display');
-                draftBanner.style.display = 'flex';
+                draftBanner.style.setProperty('display', 'flex', 'important');
 
                 document.getElementById('restoreDraftBtn').addEventListener('click', () => {
                     restoreDraft(parsed);
-                    draftBanner.style.display = 'none';
+                    draftBanner.style.setProperty('display', 'none', 'important');
+                    showDraftStatus('saved', 'Draft restored');
                 });
 
                 document.getElementById('clearDraftBtn').addEventListener('click', () => {
-                    localStorage.removeItem(DRAFT_KEY);
-                    draftBanner.style.display = 'none';
+                    discardDraft();
                 });
             }
         } catch (e) {
