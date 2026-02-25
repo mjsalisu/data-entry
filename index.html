@@ -119,8 +119,9 @@
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Date of Birth</label>
-                    <input type="date" name="dob" class="form-control" required placeholder="DD Mon YYYY">
-                    <div class="invalid-feedback">Date of Birth is required.</div>
+                    <input type="date" name="dob" id="dob" class="form-control" required min="1960-01-01"
+                      max="2016-12-31">
+                    <div class="invalid-feedback">Year must be 1900 (unspecified) or between 1960–2016.</div>
                   </div>
                 </div>
               </fieldset>

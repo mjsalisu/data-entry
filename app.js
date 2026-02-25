@@ -210,6 +210,19 @@ function validateField(field) {
         return;
     }
 
+    // ── Date of Birth — allow year 1900 as special exception ──
+    if (field.name === 'dob' && field.value) {
+        const year = parseInt(field.value.split('-')[0], 10);
+        const maxYear = new Date().getFullYear() - 10;
+        if (year === 1900 || (year >= 1960 && year <= maxYear)) {
+            field.setCustomValidity('');
+        } else {
+            field.setCustomValidity('Year must be 1900 (unspecified) or between 1960–' + maxYear + '.');
+        }
+        applyValidClass(field, field.checkValidity());
+        return;
+    }
+
     // Skip validation for hidden fields or fields without constraints
     if (field.type === 'hidden' || field.type === 'submit') return;
 
