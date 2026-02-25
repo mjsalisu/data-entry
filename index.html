@@ -82,8 +82,9 @@
                 <div class="mb-3">
                   <label class="form-label">Email</label>
                   <input type="text" name="email" class="form-control" required
-                    pattern="^(?:[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,})+|NA)$">
-                  <div class="invalid-feedback">Enter a valid email address or NA.</div>
+                    pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}|NA"
+                    placeholder="e.g. user@example.com or NA">
+                  <div class="invalid-feedback">Enter a valid email address (user@domain.com) or NA.</div>
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">

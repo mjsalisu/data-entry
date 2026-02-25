@@ -7,7 +7,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6S3Jx2ltR8anf9RGRS
  * Add more states here as needed.
  */
 const REFRESHMENTS = {
-    "Kaduna": {
+    "Benue": {
         biscuit: [
             "Yale Digestive Plus (2 * 65g)",
             "Yale Digestive ohhh super pack (100g)",
@@ -38,6 +38,14 @@ const REFRESHMENTS = {
             "Amstel Pet Bottles",
             "Dubic Malt",
             "Grand Malt"
+        ]
+    },
+    "Kaduna": {
+        biscuit: [
+            "Nasco Shortcake Biscuit (120g*36)",
+        ],
+        drink: [
+            "Maltina",
         ]
     }
 };
