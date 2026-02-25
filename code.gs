@@ -74,41 +74,43 @@ function doPost(e) {
       data.state              || '',    // U: State
       data.training_details   || '',    // V: Training Details (Institution|Partner|etc)
       data.settlement         || '',    // W: Residential Settlement
-      data.idp                || '',    // Y: Internally Displaced Person?
-      data.disability         || '',    // Z: Any Form of Disability?
-      data.disability_type    || '',    // AA: Disability Type
+      data.idp                || '',    // X: Internally Displaced Person?
+      data.disability         || '',    // Y: Any Form of Disability?
+      data.disability_type    || '',    // Z: Disability Type
 
       // ── Business & Tech Access ──────────────
-      data.existing_business  || '',    // AB: Do You Have an Existing Business?
-      data.business_nature    || '',    // AC: Nature of the Business
-      data.formal_training    || '',    // AD: Any Formal Training / Certification?
-      data.tech_access        || '',    // AE: Access to Smartphone or Computer?
-      data.internet_access    || '',    // AF: Internet Access at Home or Work?
-      data.preferred_language || '',    // AG: Preferred Language for Follow-Up
+      data.existing_business  || '',    // AA: Do You Have an Existing Business?
+      data.business_nature    || '',    // AB: Nature of the Business
+      data.formal_training    || '',    // AC: Any Formal Training / Certification?
+      data.tech_access        || '',    // AD: Access to Smartphone or Computer?
+      data.internet_access    || '',    // AE: Internet Access at Home or Work?
+      data.preferred_language || '',    // AF: Preferred Language for Follow-Up
 
       // ── Training & Job Search ───────────────
-      data.prev_soft_skills   || '',    // AH: Prev. Soft Skills Training?
-      data.training_reason    || '',    // AI: Why do you want this training?
-      data.confidence_level   || '',    // AJ: Confidence in Current Soft Skills
-      data.job_search_duration|| '',    // AK: How long actively job seeking?
-      data.job_search_challenge|| '',   // AL: Biggest job search challenge
-      data.desired_outcome    || '',    // AM: Most important training outcome
-      data.has_cv             || '',    // AN: Do you have a CV/Resume?
+      data.prev_soft_skills   || '',    // AG: Prev. Soft Skills Training?
+      data.training_reason    || '',    // AH: Why do you want this training?
+      data.confidence_level   || '',    // AI: Confidence in Current Soft Skills
+      data.job_search_duration|| '',    // AJ: How long actively job seeking?
+      data.job_search_challenge|| '',   // AK: Biggest job search challenge
+      data.desired_outcome    || '',    // AL: Most important training outcome
+      data.has_cv             || '',    // AM: Do you have a CV/Resume?
 
       // ── Feedback ────────────────────────────
-      data.hall_rating          || '',  // AO: Hall Conduciveness Rating (1–5)
-      data.facilities_adequate  || '',  // AP: Facilities Adequate?
-      data.refreshments         || '',  // AQ: Refreshments Served
-      data.refreshment_satisfaction || '', // AR: Satisfied with Refreshments?
-      data.refreshment_enhanced || '',  // AS: Refreshments Enhanced Training?
-      data.facilitator_rating   || '',  // AT: Facilitator Performance Rating (1–5)
+      data.hall_rating          || '',  // AN: Hall Conduciveness Rating
+      data.facilities_adequate  || '',  // AO: Facilities Adequate?
+      data.ref_biscuit          || '',  // AP: Refreshment - Biscuit
+      data.ref_drink            || '',  // AQ: Refreshment - Drink
+      data.ref_water            || '',  // AR: Refreshment - Water
+      data.refreshment_satisfaction || '', // AS: Satisfied with Refreshments?
+      data.refreshment_enhanced || '',  // AT: Refreshments Enhanced Training?
+      data.facilitator_rating   || '',  // AU: Facilitator Performance Rating
 
       // ── Snapshots ───────────────────────────
-      pretestImageUrl,                  // AU: PreTest Script Image Link
-      posttestImageUrl,                 // AV: PostTest Script Image Link
+      pretestImageUrl,                  // AV: PreTest Script Image Link
+      posttestImageUrl,                 // AW: PostTest Script Image Link
 
       // ── Duplicate Flag ──────────────────────
-      data.is_duplicate       || '',    // AW: Is this a duplicate?
+      data.is_duplicate       || '',    // AX: Is this a duplicate?
     ]);
 
     return ContentService

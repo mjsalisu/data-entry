@@ -50,6 +50,9 @@ function onStateChange() {
 
     validateField(inputtedBySelect);
     validateField(trainingSelect);
+
+    // Also update refreshment dropdowns (Biscuit & Drink)
+    populateRefreshments(stateVal);
     saveDraft();
 }
 
@@ -77,6 +80,47 @@ function onInputtedByChange() {
 
     validateField(trainingSelect);
     saveDraft();
+}
+
+/**
+ * Populate Biscuit and Drink dropdowns based on State from REFRESHMENTS config.
+ */
+function populateRefreshments(stateVal) {
+    const biscuitSelect = document.getElementById('ref_biscuit');
+    const drinkSelect = document.getElementById('ref_drink');
+    if (!biscuitSelect || !drinkSelect) return;
+
+    // Reset both
+    biscuitSelect.innerHTML = '<option value="">-- Select --</option>';
+    drinkSelect.innerHTML = '<option value="">-- Select --</option>';
+
+    if (stateVal && typeof REFRESHMENTS !== 'undefined' && REFRESHMENTS[stateVal]) {
+        const stateData = REFRESHMENTS[stateVal];
+
+        if (stateData.biscuit) {
+            stateData.biscuit.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                biscuitSelect.add(opt);
+            });
+        }
+
+        if (stateData.drink) {
+            stateData.drink.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                drinkSelect.add(opt);
+            });
+        }
+    } else {
+        biscuitSelect.innerHTML = '<option value="">Select state first</option>';
+        drinkSelect.innerHTML = '<option value="">Select state first</option>';
+    }
+
+    validateField(biscuitSelect);
+    validateField(drinkSelect);
 }
 
 /**
@@ -140,6 +184,17 @@ function validateField(field) {
                 return;
             }
         }
+    }
+
+    // ── Preferred language checkbox group — at least 1 required ──
+    if (field.name === 'preferred_language' && field.type === 'checkbox') {
+        const langBoxes = form.querySelectorAll('input[name="preferred_language"]');
+        const anyChecked = Array.from(langBoxes).some(cb => cb.checked);
+        // Apply visual style to all language checkboxes as a group
+        langBoxes.forEach(cb => {
+            cb.setCustomValidity(anyChecked ? '' : 'Please select at least one language.');
+        });
+        return;
     }
 
     // Skip validation for hidden fields or fields without constraints
@@ -231,7 +286,7 @@ function restoreDraft(draft) {
     // First pass: restore all non-cascading fields
     Object.entries(draft).forEach(([name, value]) => {
         // Skip cascading fields — we'll handle them after
-        if (['state', 'inputted_by', 'training_details'].includes(name)) return;
+        if (['state', 'inputted_by', 'training_details', 'ref_biscuit', 'ref_drink'].includes(name)) return;
 
         // Handle checkboxes
         const checkboxes = form.querySelectorAll(`input[name="${name}"][type="checkbox"]`);
@@ -286,6 +341,19 @@ function restoreDraft(draft) {
                     }
                 }
             }
+        }
+    }
+
+    // Third pass: rebuild refreshment dropdowns from State
+    if (draft['state']) {
+        populateRefreshments(draft['state']);
+        if (draft['ref_biscuit']) {
+            const bs = document.getElementById('ref_biscuit');
+            if (bs) bs.value = draft['ref_biscuit'];
+        }
+        if (draft['ref_drink']) {
+            const ds = document.getElementById('ref_drink');
+            if (ds) ds.value = draft['ref_drink'];
         }
     }
 
@@ -582,6 +650,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         formData.forEach((v, k) => {
             if (!checkboxNames.has(k)) payload[k] = v;
         });
+
+        // ── Merge "Other" text inputs into parent fields ──
+        // Disability type: if "Other" was selected, use the typed value
+        if (payload.disability_type === 'Other' && payload.disability_type_other) {
+            payload.disability_type = payload.disability_type_other;
+        }
+        delete payload.disability_type_other;
+
+        // Preferred language: if "Other" was checked, replace it with the typed value
+        if (payload.preferred_language && payload.preferred_language.includes('Other')) {
+            const otherText = payload.preferred_language_other || 'Other';
+            payload.preferred_language = payload.preferred_language
+                .split(', ')
+                .map(lang => lang === 'Other' ? otherText : lang)
+                .join(', ');
+        }
+        delete payload.preferred_language_other;
 
         console.log('Submitting payload:', payload);
 
