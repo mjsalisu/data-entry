@@ -186,6 +186,26 @@ function validateField(field) {
         }
     }
 
+    // ── Email domain typo detection ──
+    if (field.name === 'email' && field.value && field.value !== 'NA') {
+        const EMAIL_TYPO_MAP = {
+            'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'gmail.coom': 'gmail.com', 'gmail.cm': 'gmail.com',
+            'yahoo.co': 'yahoo.com', 'yahoo.con': 'yahoo.com', 'yahoo.coom': 'yahoo.com', 'yahoo.cm': 'yahoo.com',
+            'hotmail.co': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'hotmail.coom': 'hotmail.com', 'hotmail.cm': 'hotmail.com',
+            'outlook.co': 'outlook.com', 'outlook.con': 'outlook.com', 'outlook.coom': 'outlook.com', 'outlook.cm': 'outlook.com',
+            'ymail.co': 'ymail.com', 'ymail.con': 'ymail.com', 'ymail.coom': 'ymail.com', 'ymail.cm': 'ymail.com'
+        };
+        const atIdx = field.value.lastIndexOf('@');
+        if (atIdx > 0) {
+            const domain = field.value.substring(atIdx + 1).toLowerCase();
+            if (EMAIL_TYPO_MAP[domain]) {
+                field.setCustomValidity('Did you mean @' + EMAIL_TYPO_MAP[domain] + '?');
+                applyValidClass(field, false);
+                return;
+            }
+        }
+    }
+
     // ── Preferred language checkbox group — at least 1 required ──
     if (field.name === 'preferred_language' && field.type === 'checkbox') {
         const langBoxes = form.querySelectorAll('input[name="preferred_language"]');
@@ -200,21 +220,34 @@ function validateField(field) {
         return;
     }
 
-    // ── Snapshot hidden inputs — show/hide validation message ──
+    // ── Snapshot hidden inputs — show/hide validation message + setCustomValidity ──
     if (field.name === 'image_pretest' || field.name === 'image_posttest') {
         const key = field.name === 'image_pretest' ? 'pretest' : 'posttest';
         const msgEl = document.getElementById(key + '_validation_msg');
-        if (msgEl) {
-            msgEl.style.display = field.value ? 'none' : 'block';
+        const groupEl = document.getElementById(key + '_snapshot_group');
+        const hasImage = field.value && field.value.length > 0;
+        field.setCustomValidity(hasImage ? '' : 'Please capture or upload a snapshot.');
+        if (msgEl) msgEl.style.display = hasImage ? 'none' : 'block';
+        if (groupEl) {
+            groupEl.classList.toggle('snapshot-invalid', !hasImage);
+            groupEl.classList.toggle('snapshot-valid', hasImage);
         }
         return;
     }
 
-    // ── Date of Birth — allow year 1900 as special exception ──
+    // ── Date of Birth — allow year 1900 as special exception + calendar validity ──
     if (field.name === 'dob' && field.value) {
-        const year = parseInt(field.value.split('-')[0], 10);
+        const parts = field.value.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
         const maxYear = new Date().getFullYear() - 10;
-        if (year === 1900 || (year >= 1960 && year <= maxYear)) {
+
+        // Check calendar validity (e.g. Feb 31 → JS Date overflows to Mar 3)
+        const testDate = new Date(year, month - 1, day);
+        if (testDate.getFullYear() !== year || testDate.getMonth() !== (month - 1) || testDate.getDate() !== day) {
+            field.setCustomValidity('Invalid date — this day does not exist for the selected month.');
+        } else if (year === 1900 || (year >= 1960 && year <= maxYear)) {
             field.setCustomValidity('');
         } else {
             field.setCustomValidity('Year must be 1900 (unspecified) or between 1960–' + maxYear + '.');
@@ -369,14 +402,19 @@ function discardDraft() {
     if (biscuitSelect) biscuitSelect.innerHTML = '<option value="">Select state first</option>';
     if (drinkSelect) drinkSelect.innerHTML = '<option value="">Select state first</option>';
 
-    // Hide snapshot previews
+    // Hide snapshot previews and reset file inputs
     ['pretest', 'posttest'].forEach(key => {
         const preview = document.getElementById('preview-' + key);
-        const cameraBox = document.getElementById('camera-box-' + key);
+        const fileInput = document.getElementById('fileInput-' + key);
         const valMsg = document.getElementById(key + '_validation_msg');
+        const groupEl = document.getElementById(key + '_snapshot_group');
         if (preview) { preview.style.display = 'none'; preview.src = ''; }
-        if (cameraBox) cameraBox.style.display = 'none';
+        if (fileInput) fileInput.value = '';
         if (valMsg) valMsg.style.display = 'block';
+        if (groupEl) {
+            groupEl.classList.remove('snapshot-valid');
+            groupEl.classList.remove('snapshot-invalid');
+        }
     });
 
     // Re-trigger conditional field toggles (they will hide/reset sub-fields)
@@ -385,6 +423,14 @@ function discardDraft() {
     toggleDisability();
     toggleDisabilityOther();
     toggleLanguageOther();
+
+    // Re-enable all language checkboxes (in case Unfilled had disabled them)
+    const form2 = document.getElementById('dataForm');
+    if (form2) {
+        form2.querySelectorAll('input[name="preferred_language"]').forEach(cb => {
+            cb.disabled = false;
+        });
+    }
 
     // Clear all validation styling
     form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
@@ -582,13 +628,56 @@ function toggleLanguageOther() {
     const otherInput = document.getElementById('lang_other_input');
     if (!otherCb || !otherGroup) return;
 
-    if (otherCb.checked) {
+    if (otherCb.checked && !otherCb.disabled) {
         otherGroup.style.display = 'block';
         if (otherInput) otherInput.required = true;
     } else {
         otherGroup.style.display = 'none';
         if (otherInput) { otherInput.required = false; otherInput.value = ''; }
     }
+}
+
+// ─────────────────────────────────────────────
+// Language "Unfilled" exclusivity
+// When "Unfilled (left blank)" is checked, disable all other language checkboxes.
+// When any other language is checked, uncheck "Unfilled (left blank)".
+// ─────────────────────────────────────────────
+function enforceUnfilledExclusivity(changedCb) {
+    const form = document.getElementById('dataForm');
+    if (!form) return;
+
+    const unfilledCb = document.getElementById('langUnfilled');
+    if (!unfilledCb) return;
+
+    const allLangBoxes = form.querySelectorAll('input[name="preferred_language"]');
+    const otherBoxes = Array.from(allLangBoxes).filter(cb => cb.id !== 'langUnfilled');
+
+    if (changedCb === unfilledCb) {
+        if (unfilledCb.checked) {
+            // Unfilled was just checked → uncheck & disable all others
+            otherBoxes.forEach(cb => {
+                cb.checked = false;
+                cb.disabled = true;
+            });
+            toggleLanguageOther(); // collapse Other text input
+        } else {
+            // Unfilled was unchecked → re-enable all others
+            otherBoxes.forEach(cb => {
+                cb.disabled = false;
+            });
+        }
+    } else if (changedCb.checked) {
+        // A non-Unfilled box was checked → uncheck Unfilled
+        unfilledCb.checked = false;
+    }
+
+    // Re-run language group validation
+    const anyChecked = Array.from(allLangBoxes).some(cb => cb.checked);
+    const langMsg = document.getElementById('lang_validation_msg');
+    allLangBoxes.forEach(cb => {
+        cb.setCustomValidity(anyChecked ? '' : 'Please select at least one language.');
+    });
+    if (langMsg) langMsg.style.display = anyChecked ? 'none' : 'block';
 }
 
 // ─────────────────────────────────────────────
@@ -651,12 +740,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleDisabilityOther();
     }
 
-    // ── Language "Other" checkbox toggle ──
+    // ── Language "Other" checkbox toggle + Unfilled exclusivity ──
     const langOtherCb = document.getElementById('langOther');
     if (langOtherCb) {
         langOtherCb.addEventListener('change', () => { toggleLanguageOther(); saveDraft(); });
         toggleLanguageOther();
     }
+
+    // Wire Unfilled exclusivity to ALL language checkboxes
+    form.querySelectorAll('input[name="preferred_language"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            enforceUnfilledExclusivity(cb);
+        });
+    });
 
     // ── Attach real-time validation + draft save to ALL form fields ──
     form.querySelectorAll('input, select, textarea').forEach(field => {

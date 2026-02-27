@@ -48,34 +48,23 @@
                 <div class="mb-3" id="pretest_snapshot_group">
                   <label class="form-label fw-bold">Snapshot of PreTest Script <span
                       class="text-danger">*</span></label>
-                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('pretest')">📸
-                    Open Camera (PreTest)</button>
-                  <div id="camera-box-pretest" class="camera-box bg-dark rounded overflow-hidden" style="display:none;">
-                    <video id="video-pretest" autoplay playsinline class="w-100 d-block"></video>
-                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('pretest')">Capture
-                      PreTest</button>
-                  </div>
-                  <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="file" accept="image/*" capture="environment" id="fileInput-pretest"
+                    class="form-control mb-2" onchange="handleFileSelect('pretest', this)">
+                  <img id="preview-pretest" class="img-fluid mt-2 border border-success rounded" style="display:none;">
                   <input type="hidden" name="image_pretest" id="imgData-pretest" required>
-                  <div id="pretest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
-                    PreTest script.</div>
+                  <div id="pretest_validation_msg" class="text-danger small mt-1">Please capture or upload a snapshot of
+                    the PreTest script.</div>
                 </div>
 
                 <div class="mb-3" id="posttest_snapshot_group">
                   <label class="form-label fw-bold">Snapshot of PostTest Script <span
                       class="text-danger">*</span></label>
-                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('posttest')">📸
-                    Open Camera (PostTest)</button>
-                  <div id="camera-box-posttest" class="camera-box bg-dark rounded overflow-hidden"
-                    style="display:none;">
-                    <video id="video-posttest" autoplay playsinline class="w-100 d-block"></video>
-                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('posttest')">Capture
-                      PostTest</button>
-                  </div>
-                  <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="file" accept="image/*" capture="environment" id="fileInput-posttest"
+                    class="form-control mb-2" onchange="handleFileSelect('posttest', this)">
+                  <img id="preview-posttest" class="img-fluid mt-2 border border-success rounded" style="display:none;">
                   <input type="hidden" name="image_posttest" id="imgData-posttest" required>
-                  <div id="posttest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
-                    PostTest script.</div>
+                  <div id="posttest_validation_msg" class="text-danger small mt-1">Please capture or upload a snapshot
+                    of the PostTest script.</div>
                 </div>
               </fieldset>
 
