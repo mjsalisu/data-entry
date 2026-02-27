@@ -34,9 +34,73 @@
                 <button type="button" id="clearDraftBtn" class="btn btn-sm btn-outline-danger">Discard</button>
               </div>
 
+              <!-- 8. Scores & Snapshots -->
+              <fieldset class="mb-4">
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">Scores & Snapshots</legend>
+                <div class="mb-3">
+                  <label class="form-label">PostTest Score</label>
+                  <input type="number" name="post_test_score" class="form-control" min="0" max="15"
+                    title="Score between 0 and 15" placeholder="Enter PostTest score (0-15)" required>
+                  <div class="invalid-feedback">Please enter the PostTest score (0-15).</div>
+                </div>
+
+                <!-- Snapshots Section -->
+                <div class="mb-3" id="pretest_snapshot_group">
+                  <label class="form-label fw-bold">Snapshot of PreTest Script <span
+                      class="text-danger">*</span></label>
+                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('pretest')">📸
+                    Open Camera (PreTest)</button>
+                  <div id="camera-box-pretest" class="camera-box bg-dark rounded overflow-hidden" style="display:none;">
+                    <video id="video-pretest" autoplay playsinline class="w-100 d-block"></video>
+                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('pretest')">Capture
+                      PreTest</button>
+                  </div>
+                  <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="hidden" name="image_pretest" id="imgData-pretest" required>
+                  <div id="pretest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
+                    PreTest script.</div>
+                </div>
+
+                <div class="mb-3" id="posttest_snapshot_group">
+                  <label class="form-label fw-bold">Snapshot of PostTest Script <span
+                      class="text-danger">*</span></label>
+                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('posttest')">📸
+                    Open Camera (PostTest)</button>
+                  <div id="camera-box-posttest" class="camera-box bg-dark rounded overflow-hidden"
+                    style="display:none;">
+                    <video id="video-posttest" autoplay playsinline class="w-100 d-block"></video>
+                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('posttest')">Capture
+                      PostTest</button>
+                  </div>
+                  <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
+                  <input type="hidden" name="image_posttest" id="imgData-posttest" required>
+                  <div id="posttest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
+                    PostTest script.</div>
+                </div>
+              </fieldset>
+
               <!-- 1. Metadata & Consent -->
               <fieldset class="mb-4">
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Metadata & Consent</legend>
+                <!-- Cascading: State → Inputted by → Institution -->
+                <div id="dynamicFieldsLoader" class="text-center text-muted py-3" style="display:none;">
+                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                  Loading dynamic fields from sheet…
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">State</label>
+                  <select id="state" name="state" class="form-select" required>
+                    <option value="">-- Select State --</option>
+                  </select>
+                  <div class="invalid-feedback">Please select a state.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Inputted by</label>
+                  <select id="inputted_by" name="inputted_by" class="form-select" required>
+                    <option value="">Select state first</option>
+                  </select>
+                  <div class="invalid-feedback">Please select who inputted this entry.</div>
+                </div>
                 <div class="mb-3">
                   <label class="form-label">Participant Consent</label>
                   <select name="consent" class="form-select" required>
@@ -89,8 +153,9 @@
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Phone Number</label>
-                    <input type="tel" name="phone" class="form-control" required pattern="^(?:[789][01]\d{8}|0)$">
-                    <div class="invalid-feedback">Must be exactly 10 digits long (start 7,8,9) or 0.</div>
+                    <input type="tel" name="phone" class="form-control" required pattern="^(?:[789][01]\d{8}|0)$"
+                      placeholder="10 digits long (starting with 7,8 or 9)">
+                    <div class="invalid-feedback">Must be exactly 10 digits long (start 7, 8,9), then 0 or 1.</div>
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Phone Number Type</label>
@@ -105,7 +170,8 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Home Address</label>
-                  <textarea name="address" class="form-control" rows="2" required></textarea>
+                  <textarea name="address" class="form-control" rows="2" placeholder="Write NA if not applicable"
+                    required></textarea>
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">
@@ -119,7 +185,7 @@
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Date of Birth</label>
-                    <input type="date" name="dob" id="dob" class="form-control" required min="1960-01-01"
+                    <input type="date" name="dob" id="dob" class="form-control" required min="1900-01-01"
                       max="2016-12-31">
                     <div class="invalid-feedback">Year must be 1900 (unspecified) or between 1960–2016.</div>
                   </div>
@@ -204,25 +270,6 @@
               <!-- 4. Demographics & Background -->
               <fieldset class="mb-4">
                 <legend class="h5 text-primary border-bottom pb-2 mb-3">Demographics & Background</legend>
-                <!-- Cascading: State → Inputted by → Institution -->
-                <div id="dynamicFieldsLoader" class="text-center text-muted py-3" style="display:none;">
-                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                  Loading dynamic fields from sheet…
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">State</label>
-                  <select id="state" name="state" class="form-select" required>
-                    <option value="">-- Select State --</option>
-                  </select>
-                  <div class="invalid-feedback">Please select a state.</div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Inputted by</label>
-                  <select id="inputted_by" name="inputted_by" class="form-select" required>
-                    <option value="">Select state first</option>
-                  </select>
-                  <div class="invalid-feedback">Please select who inputted this entry.</div>
-                </div>
                 <div class="mb-3">
                   <label class="form-label">Institution | Partner | Disaggregation | Date =&gt; Facilitator |
                     Vols</label>
@@ -595,52 +642,6 @@
                 </div>
               </fieldset>
 
-              <!-- 8. Scores & Snapshots -->
-              <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Scores & Snapshots</legend>
-                <div class="mb-3">
-                  <label class="form-label">Post-Test Score</label>
-                  <input type="number" name="post_test_score" class="form-control" min="0" max="15"
-                    title="Score between 0 and 15" required>
-                  <div class="invalid-feedback">Please enter the post-test score (0-15).</div>
-                </div>
-
-                <!-- Snapshots Section -->
-                <div class="mb-3" id="pretest_snapshot_group">
-                  <label class="form-label fw-bold">Snapshot of PreTest Script <span
-                      class="text-danger">*</span></label>
-                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('pretest')">📸
-                    Open Camera (PreTest)</button>
-                  <div id="camera-box-pretest" class="camera-box bg-dark rounded overflow-hidden" style="display:none;">
-                    <video id="video-pretest" autoplay playsinline class="w-100 d-block"></video>
-                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('pretest')">Capture
-                      PreTest</button>
-                  </div>
-                  <img id="preview-pretest" class="img-fluid mt-2 border border-success" style="display:none;">
-                  <input type="hidden" name="image_pretest" id="imgData-pretest" required>
-                  <div id="pretest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
-                    PreTest script.</div>
-                </div>
-
-                <div class="mb-3" id="posttest_snapshot_group">
-                  <label class="form-label fw-bold">Snapshot of PostTest Script <span
-                      class="text-danger">*</span></label>
-                  <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="openCam('posttest')">📸
-                    Open Camera (PostTest)</button>
-                  <div id="camera-box-posttest" class="camera-box bg-dark rounded overflow-hidden"
-                    style="display:none;">
-                    <video id="video-posttest" autoplay playsinline class="w-100 d-block"></video>
-                    <button type="button" class="btn btn-success w-100 rounded-0" onclick="capture('posttest')">Capture
-                      PostTest</button>
-                  </div>
-                  <img id="preview-posttest" class="img-fluid mt-2 border border-success" style="display:none;">
-                  <input type="hidden" name="image_posttest" id="imgData-posttest" required>
-                  <div id="posttest_validation_msg" class="text-danger small mt-1">Please capture a snapshot of the
-                    PostTest script.</div>
-                </div>
-
-              </fieldset>
-
               <div class="mb-4">
                 <label class="form-label">Is this a duplicate?</label>
                 <select name="is_duplicate" class="form-select">
@@ -662,6 +663,7 @@
   <script src="dist/js/bootstrap.bundle.min.js"></script>
   <script src="config.js"></script>
   <script src="camera.js"></script>
+  <script src="datepicker.js"></script>
   <script src="app.js"></script>
 </body>
 

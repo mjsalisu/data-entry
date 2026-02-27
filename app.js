@@ -658,28 +658,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleLanguageOther();
     }
 
-    // ── Date of Birth auto-format on blur ──
-    const dobInput = form.querySelector('input[name="dob"]');
-    if (dobInput) {
-        dobInput.addEventListener('blur', function () {
-            let val = this.value.trim();
-            if (!val) return;
-
-            // Append year 1900 if no 4-digit year detected
-            if (!/\d{4}$/.test(val)) val += ' 1900';
-
-            const dateObj = new Date(val);
-            if (!isNaN(dateObj.getTime())) {
-                const day = dateObj.getDate();
-                const month = dateObj.toLocaleString('default', { month: 'short' });
-                const year = dateObj.getFullYear();
-                this.value = `${day} ${month}, ${year}`;
-            }
-            validateField(this);
-            saveDraft();
-        });
-    }
-
     // ── Attach real-time validation + draft save to ALL form fields ──
     form.querySelectorAll('input, select, textarea').forEach(field => {
         const events = (field.type === 'checkbox' || field.type === 'radio')
