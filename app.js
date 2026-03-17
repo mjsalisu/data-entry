@@ -542,6 +542,26 @@ function restoreDraft(draft) {
     toggleDisabilityOther();
     toggleLanguageOther();
 
+    // Restore snapshot previews if draft contains image data
+    ['pretest', 'posttest'].forEach(key => {
+        const hiddenInput = document.getElementById('imgData-' + key);
+        if (hiddenInput && hiddenInput.value && hiddenInput.value.length > 0) {
+            const preview = document.getElementById('preview-' + key);
+            const msgEl = document.getElementById(key + '_validation_msg');
+            const groupEl = document.getElementById(key + '_snapshot_group');
+
+            if (preview) {
+                preview.src = hiddenInput.value;
+                preview.style.display = 'block';
+            }
+            if (msgEl) msgEl.style.display = 'none';
+            if (groupEl) {
+                groupEl.classList.remove('snapshot-invalid');
+                groupEl.classList.add('snapshot-valid');
+            }
+        }
+    });
+
     // Validate all restored fields after a short delay
     setTimeout(() => {
         form.querySelectorAll('input, select, textarea').forEach(field => {
