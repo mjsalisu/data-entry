@@ -42,7 +42,6 @@ function doPost(e) {
         const fileName = `${participantName}_${label}_${timestamp}.jpg`;
         const blob = Utilities.newBlob(bytes, contentType, fileName);
         const file = folder.createFile(blob);
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         return file.getUrl();
       } catch (imgErr) {
         return `Upload Error: ${imgErr.message}`;
@@ -184,5 +183,5 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  return HtmlService.createHtmlOutput('Jobberman SST Data Entry API is running.');
+  return HtmlService.createHtmlOutput('Jobberman BCWS Data Entry API is running.');
 }

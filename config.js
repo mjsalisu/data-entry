@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzm9xKwRdfUQ-HtPaI6FJNn3bn4pcZYr6vs7hJapjy3JzYlABAvEkTkdMjLae2H_h90/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCpdRduyxC0Zlu4XC5cruoMhNVQr9DxEmYDwXgeOXEYG7K3jZhvlnF-aPlyc7cJGyC/exec";
 
 /**
  * Refreshment options per State.
