@@ -903,8 +903,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(() => {
                 // Clear draft on successful submission
                 localStorage.removeItem(DRAFT_KEY);
-                alert('Registration Sent! Checking the sheet now...');
-                location.reload();
+
+                // Increment session submission counter
+                const SESSION_COUNT_KEY = 'jobberman_submission_count';
+                let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
+                sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
+
+                // Show success screen, hide form
+                document.getElementById('dataForm').style.display = 'none';
+                const successScreen = document.getElementById('successScreen');
+                successScreen.style.display = 'block';
+                document.getElementById('submissionCount').textContent = count;
+
+                // Re-trigger the SVG animation by cloning and replacing the SVG
+                const svg = successScreen.querySelector('.success-checkmark svg');
+                if (svg) {
+                    const clone = svg.cloneNode(true);
+                    svg.parentNode.replaceChild(clone, svg);
+                }
+
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             })
             .catch(err => {
                 alert('Error: ' + err.message);
@@ -913,4 +932,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loader.style.display = 'none';
             });
     });
+
+    // ── "Submit Another Response" Button Handler ──
+    const submitAnotherBtn = document.getElementById('submitAnotherBtn');
+    if (submitAnotherBtn) {
+        submitAnotherBtn.addEventListener('click', () => {
+            // Hide success screen, show form
+            document.getElementById('successScreen').style.display = 'none';
+            const formEl = document.getElementById('dataForm');
+            formEl.style.display = 'block';
+
+            // Reset the form
+            discardDraft();
+
+            // Re-enable submit button
+            const subBtn = document.getElementById('subBtn');
+            if (subBtn) {
+                subBtn.disabled = false;
+                subBtn.innerHTML = 'Submit Registration';
+            }
+            document.getElementById('loader').style.display = 'none';
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
 });
