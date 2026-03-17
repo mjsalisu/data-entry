@@ -642,7 +642,7 @@
                 </select>
               </div>
 
-              <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Uploading to Sheet...
+              <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Submitting...
               </div>
               <button type="submit" id="subBtn" class="btn btn-primary w-100 py-3 fw-bold">Submit Registration</button>
             </form>
@@ -659,10 +659,14 @@
                   </svg>
                 </div>
                 <h3 class="text-success fw-bold mb-2">Submission Successful!</h3>
-                <p class="text-muted mb-4">The registration has been sent to the sheet.</p>
+                <p class="text-muted mb-4">The entries has been recorded successfully.</p>
                 <div class="d-inline-block bg-light rounded-3 px-4 py-3 mb-4">
                   <span class="text-muted d-block small">Your submissions this session</span>
                   <span id="submissionCount" class="fs-2 fw-bold text-primary">0</span>
+                  <button type="button" id="resetCounterBtn"
+                    class="btn btn-sm btn-outline-secondary d-block mx-auto mt-2">
+                    🔄 Reset Counter
+                  </button>
                 </div>
                 <div>
                   <button type="button" id="submitAnotherBtn" class="btn btn-primary w-100 py-3 fw-bold">

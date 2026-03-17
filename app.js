@@ -957,4 +957,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
+
+    // ── "Reset Counter" Button Handler ──
+    const resetCounterBtn = document.getElementById('resetCounterBtn');
+    if (resetCounterBtn) {
+        resetCounterBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('jobberman_submission_count');
+            document.getElementById('submissionCount').textContent = '0';
+        });
+    }
 });
