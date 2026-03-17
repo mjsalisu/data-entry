@@ -1,10 +1,10 @@
 /**
  * Handles incoming data from the external HTML form (Jobberman SST Data Entry)
- * Sheet: Data_Q4
+ * Sheet: BCWS_Data
  */
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Data_Q4') || ss.insertSheet('Data_Q4');
+  const sheet = ss.getSheetByName('BCWS_Data') || ss.insertSheet('BCWS_Data');
 
   try {
     // 1. Parse the JSON payload from the external site
@@ -39,7 +39,7 @@ function doPost(e) {
     const posttestImageUrl = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
-    // 3. Append Row to Google Sheet (Data_Q4)
+    // 3. Append Row to Google Sheet (BCWS_Data)
     //    Column order matches the headers visible in the sheet screenshot.
     // ─────────────────────────────────────────────
     sheet.appendRow([

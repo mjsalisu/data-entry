@@ -821,12 +821,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (field.name) validateField(field);
         });
 
+        // ── Explicit snapshot validation ──
+        // Hidden inputs are exempt from browser constraint validation,
+        // so checkValidity() always returns true for them. We must check manually.
+        let snapshotValid = true;
+        ['pretest', 'posttest'].forEach(key => {
+            const hiddenInput = document.getElementById('imgData-' + key);
+            const hasImage = hiddenInput && hiddenInput.value && hiddenInput.value.length > 0;
+            if (!hasImage) {
+                snapshotValid = false;
+                const msgEl = document.getElementById(key + '_validation_msg');
+                const groupEl = document.getElementById(key + '_snapshot_group');
+                if (msgEl) msgEl.style.display = 'block';
+                if (groupEl) {
+                    groupEl.classList.add('snapshot-invalid');
+                    groupEl.classList.remove('snapshot-valid');
+                }
+            }
+        });
+
         // Check validity without adding was-validated class
-        if (!this.checkValidity()) {
+        const formValid = this.checkValidity();
+        if (!formValid || !snapshotValid) {
             event.stopPropagation();
 
-            // Scroll to first field we explicitly marked invalid
-            const firstInvalid = this.querySelector('.is-invalid');
+            // Scroll to first invalid element (regular field or snapshot group)
+            const firstInvalid = this.querySelector('.is-invalid, .snapshot-invalid');
             if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
