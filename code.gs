@@ -35,21 +35,22 @@ function doPost(e) {
     const timestamp = new Date().getTime();
 
     function uploadImage(base64String, label) {
-      if (!base64String || base64String.trim() === '') return '';
+      if (!base64String || base64String.trim() === '') return { url: '', path: '' };
       try {
         const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
         const bytes = Utilities.base64Decode(base64String.split(",")[1]);
         const fileName = `${participantName}_${label}_${timestamp}.jpg`;
         const blob = Utilities.newBlob(bytes, contentType, fileName);
         const file = folder.createFile(blob);
-        return file.getUrl();
+        const filePath = `${rootFolderName}/${monthFolderName}/${stateName}/${fileName}`;
+        return { url: file.getUrl(), path: filePath };
       } catch (imgErr) {
-        return `Upload Error: ${imgErr.message}`;
+        return { url: `Upload Error: ${imgErr.message}`, path: '' };
       }
     }
 
-    const pretestImageUrl  = uploadImage(data.image_pretest,  'PreTest');
-    const posttestImageUrl = uploadImage(data.image_posttest, 'PostTest');
+    const pretestResult  = uploadImage(data.image_pretest,  'PreTest');
+    const posttestResult = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
     // 3. Append Row to Google Sheet (BCWS_Data)
@@ -119,11 +120,13 @@ function doPost(e) {
       data.facilitator_rating   || '',  // AU: Facilitator Performance Rating
 
       // ── Snapshots ───────────────────────────
-      pretestImageUrl,                  // AV: PreTest Script Image Link
-      posttestImageUrl,                 // AW: PostTest Script Image Link
+      pretestResult.url,                // AV: Snapshot of PreTest Script (URL)
+      pretestResult.path,               // AW: PreTest PathName
+      posttestResult.url,               // AX: Snapshot of PostTest Script (URL)
+      posttestResult.path,              // AY: PostTest PathName
 
       // ── Duplicate Flag ──────────────────────
-      data.is_duplicate       || '',    // AX: Is this a duplicate?
+      data.is_duplicate       || '',    // AZ: Is this a duplicate?
     ]);
 
     return ContentService
