@@ -13,9 +13,23 @@ function doPost(e) {
     // ─────────────────────────────────────────────
     // 2. Google Drive Image Uploads (PreTest & PostTest)
     // ─────────────────────────────────────────────
-    const folderName = "Participant_Snapshots";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    // Root folder
+    const rootFolderName = "Participant_Snapshots";
+    let rootFolders = DriveApp.getFoldersByName(rootFolderName);
+    let rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(rootFolderName);
+
+    // Month subfolder (e.g. "March_2026")
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const now = new Date();
+    const monthFolderName = months[now.getMonth()] + '_' + now.getFullYear();
+    let monthFolders = rootFolder.getFoldersByName(monthFolderName);
+    let monthFolder = monthFolders.hasNext() ? monthFolders.next() : rootFolder.createFolder(monthFolderName);
+
+    // State subfolder (e.g. "Kano")
+    const stateName = (data.state || 'Unknown_State').trim();
+    let stateFolders = monthFolder.getFoldersByName(stateName);
+    let folder = stateFolders.hasNext() ? stateFolders.next() : monthFolder.createFolder(stateName);
 
     const participantName = (data.name || 'Unknown').replace(/\s+/g, '_');
     const timestamp = new Date().getTime();
