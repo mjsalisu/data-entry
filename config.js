@@ -13,6 +13,7 @@ const REFRESHMENTS = {
             "Sesamix Biscuit (2*100g)",
             "Nasco Biscuit (100g)",
             "Fab Biscuit (100g)",
+            "Mcvites Digestive 78g",
             "Not Provided",
             "Unticked (left blank)"
         ],
