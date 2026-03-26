@@ -86,5 +86,74 @@ const REFRESHMENTS = {
             "Not Provided",
             "Unticked (left blank)"
         ]
+    },
+    "Edo": {
+        biscuit: [
+            "Biscuit (McVitie's Digestives 50g)",
+            "Not Provided",
+            "Unticked (left blank)"
+        ],
+        drink: [
+            "Maltina",
+            "Hi Malt",
+            "Not Provided",
+            "Unticked (left blank)"
+        ]
+    },
+    "Benue": {
+        biscuit: [
+            "Yale Digestive Plus (65g)",
+            "Grand Malt",
+            "Yale Super Crunchy (65g)",
+            "Not Provided",
+            "Unticked (left blank)"
+        ],
+        drink: [
+            "Beta Malt",
+            "Yale Choco (65g)",
+            "Hi Malt",
+            "Not Provided",
+            "Unticked (left blank)"
+        ]
+    },
+    "Kaduna": {
+        biscuit: [
+            "Nasco Shortcake Biscuit (120g*36)",
+            "Mc Vittes Hobb Nobbs or Digestive (90g)",
+            "Not Provided",
+            "Unticked (left blank)"
+        ],
+        drink: [
+            "Maltina",
+            "Not Provided",
+            "Unticked (left blank)"
+        ]
+    },
+    "Kano": {
+        biscuit: [
+            "Digestive/Hobnobs (78g*24/90g*12)",
+            "Rich Tea (200g)",
+            "Nasco Shortcake Biscuit (120g*36)",
+            "McVittes Digestive (90g)",
+            "Not Provided",
+            "Unticked (left blank)"
+        ],
+        drink: [
+            "Maltina",
+            "Not Provided",
+            "Unticked (left blank)"
+        ]
+    },
+    "Katsina": {
+        biscuit: [
+            "Nasco Shortcake Biscuit 120g*36",
+            "Not Provided",
+            "Unticked (left blank)"
+        ],
+        drink: [
+            "Maltina",
+            "Not Provided",
+            "Unticked (left blank)"
+        ]
     }
 };
