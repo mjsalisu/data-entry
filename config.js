@@ -1,6 +1,28 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCpNdOIlzHRftaFyYFtnAOx-AT-WebfJwtAEcRDgh2VhwILro5DsFVstZLpa5DQyWM/exec";
 
 /**
+ * State code abbreviations for Certificate ID formatting.
+ * Certificate ID format: SC/PT/7-digit-code
+ * SC = State Code, PT = Physical Training (constant).
+ */
+const STATE_CODES = {
+    "Abia":       "AB",
+    "Akwa Ibom":  "AK",
+    "Benue":      "BE",
+    "Cross River":"CR",
+    "Delta":      "DE",
+    "Edo":        "ED",
+    "Enugu":      "EN",
+    "Kaduna":     "KD",
+    "Kano":       "KN",
+    "Katsina":    "KT",
+    "Nassarawa":  "NA",
+    "Ogun":       "OG",
+    "Ondo":       "ON",
+    "Oyo":        "OY"
+};
+
+/**
  * Refreshment options per State.
  * Structure: { "State": { biscuit: [...], drink: [...] } }
  * Water is the same for all states so it's handled separately in HTML.

@@ -53,6 +53,14 @@ function onStateChange() {
 
     // Also update refreshment dropdowns (Biscuit & Drink)
     populateRefreshments(stateVal);
+
+    // Update Certificate ID prefix label
+    const certPrefix = document.getElementById('certIdPrefix');
+    if (certPrefix) {
+        const code = (typeof STATE_CODES !== 'undefined' && STATE_CODES[stateVal]) ? STATE_CODES[stateVal] : '??';
+        certPrefix.textContent = code + '/PT/';
+    }
+
     saveDraft();
 }
 
@@ -402,6 +410,10 @@ function discardDraft() {
     if (biscuitSelect) biscuitSelect.innerHTML = '<option value="">Select state first</option>';
     if (drinkSelect) drinkSelect.innerHTML = '<option value="">Select state first</option>';
 
+    // Reset Certificate ID prefix
+    const certPrefix = document.getElementById('certIdPrefix');
+    if (certPrefix) certPrefix.textContent = '??/PT/';
+
     // Hide snapshot previews and reset file inputs
     ['pretest', 'posttest'].forEach(key => {
         const preview = document.getElementById('preview-' + key);
@@ -532,6 +544,13 @@ function restoreDraft(draft) {
         if (draft['ref_drink']) {
             const ds = document.getElementById('ref_drink');
             if (ds) ds.value = draft['ref_drink'];
+        }
+
+        // Update Certificate ID prefix
+        const certPrefix = document.getElementById('certIdPrefix');
+        if (certPrefix) {
+            const code = (typeof STATE_CODES !== 'undefined' && STATE_CODES[draft['state']]) ? STATE_CODES[draft['state']] : '??';
+            certPrefix.textContent = code + '/PT/';
         }
     }
 
@@ -895,6 +914,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         formData.forEach((v, k) => {
             if (!checkboxNames.has(k)) payload[k] = v;
         });
+
+        // ── Certificate ID: concatenate SC/PT/digits ──
+        if (payload.certificate_id && payload.certificate_id !== 'NA') {
+            const stateVal = payload.state || '';
+            const stateCode = (typeof STATE_CODES !== 'undefined' && STATE_CODES[stateVal]) ? STATE_CODES[stateVal] : '??';
+            payload.certificate_id = stateCode + '/PT/' + payload.certificate_id;
+        }
 
         // ── Merge "Other" text inputs into parent fields ──
         // Disability type: if "Other" was selected, use the typed value

@@ -105,9 +105,12 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Certificate ID</label>
-                  <input type="text" name="certificate_id" class="form-control" pattern="^(NA|\d{7})$"
-                    placeholder="7-digit certificate number or NA" required>
-                  <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
+                  <div class="input-group">
+                    <span class="input-group-text" id="certIdPrefix">??/PT/</span>
+                    <input type="text" name="certificate_id" id="certificate_id" class="form-control"
+                      pattern="^(NA|\d{7})$" placeholder="7-digit code or NA" required>
+                    <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
+                  </div>
                 </div>
 
                 <div class="mb-3">
