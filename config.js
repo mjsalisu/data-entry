@@ -6,20 +6,20 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCpNdOIlzHRftaFyYFt
  * SC = State Code, PT = Physical Training (constant).
  */
 const STATE_CODES = {
-    "Abia":       "AB",
-    "Akwa Ibom":  "AK",
-    "Benue":      "BE",
-    "Cross River":"CR",
-    "Delta":      "DE",
-    "Edo":        "ED",
-    "Enugu":      "EN",
-    "Kaduna":     "KD",
-    "Kano":       "KN",
-    "Katsina":    "KT",
-    "Nassarawa":  "NA",
-    "Ogun":       "OG",
-    "Ondo":       "ON",
-    "Oyo":        "OY"
+    "Abia": "AB",
+    "Akwa Ibom": "AK",
+    "Benue": "BE",
+    "Cross River": "CR",
+    "Delta": "DE",
+    "Edo": "ED",
+    "Enugu": "EN",
+    "Kaduna": "KD",
+    "Kano": "KN",
+    "Katsina": "KT",
+    "Nassarawa": "NA",
+    "Ogun": "OG",
+    "Ondo": "ON",
+    "Oyo": "OY"
 };
 
 /**
@@ -125,14 +125,14 @@ const REFRESHMENTS = {
     "Benue": {
         biscuit: [
             "Yale Digestive Plus (65g)",
-            "Grand Malt",
+            "Yale Choco (65g)",
             "Yale Super Crunchy (65g)",
             "Not Provided",
             "Unticked (left blank)"
         ],
         drink: [
             "Beta Malt",
-            "Yale Choco (65g)",
+            "Grand Malt",
             "Hi Malt",
             "Not Provided",
             "Unticked (left blank)"
