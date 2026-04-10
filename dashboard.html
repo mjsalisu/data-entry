@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BCWS Target Tracker Dashboard</title>
+  <meta name="description" content="Jobberman BCWS monthly training target tracker dashboard with year-to-date analytics">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="dash-header" id="dashHeader">
+      <div class="header-left">
+        <div class="logo-mark">JB</div>
+        <div>
+          <h1>BCWS Target Tracker</h1>
+          <p class="subtitle">Building Careers for Workplace Success</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="month-selector">
+          <label for="monthSelect">Tracking Month</label>
+          <select id="monthSelect"></select>
+        </div>
+        <a href="index.html" class="btn-data-entry">📝 Data Entry</a>
+      </div>
+    </header>
+
+    <!-- KPI Summary Cards -->
+    <section class="kpi-row" id="kpiRow">
+      <div class="kpi-card kpi-target">
+        <div class="kpi-icon">🎯</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Monthly Target</span>
+          <span class="kpi-value" id="kpiTarget">56,500</span>
+        </div>
+        <div class="kpi-ring" id="kpiTargetRing"></div>
+      </div>
+      <div class="kpi-card kpi-training">
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Training Numbers</span>
+          <span class="kpi-value" id="kpiTraining">0</span>
+        </div>
+        <div class="kpi-progress"><div class="kpi-bar" id="kpiTrainingBar"></div></div>
+      </div>
+      <div class="kpi-card kpi-unique">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Unique Counts</span>
+          <span class="kpi-value" id="kpiUnique">0</span>
+        </div>
+        <div class="kpi-progress"><div class="kpi-bar" id="kpiUniqueBar"></div></div>
+      </div>
+      <div class="kpi-card kpi-duplicates">
+        <div class="kpi-icon">🔄</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Duplicates Removed</span>
+          <span class="kpi-value" id="kpiDuplicates">0</span>
+        </div>
+        <div class="kpi-badge" id="kpiDupBadge">0%</div>
+      </div>
+    </section>
+
+    <!-- Disaggregation Cards -->
+    <section class="disagg-row">
+      <div class="disagg-card disagg-regular">
+        <span class="disagg-label">Regular</span>
+        <span class="disagg-value" id="disaggRegular">49,000</span>
+        <span class="disagg-pct">86.73%</span>
+      </div>
+      <div class="disagg-card disagg-pwd">
+        <span class="disagg-label">PWD</span>
+        <span class="disagg-value" id="disaggPWD">4,500</span>
+        <span class="disagg-pct">7.96%</span>
+      </div>
+      <div class="disagg-card disagg-idp">
+        <span class="disagg-label">IDP</span>
+        <span class="disagg-value" id="disaggIDP">3,000</span>
+        <span class="disagg-pct">5.31%</span>
+      </div>
+      <div class="disagg-card disagg-female">
+        <span class="disagg-label">Female Gender</span>
+        <span class="disagg-value" id="disaggFemale">80%</span>
+        <span class="disagg-pct">Target</span>
+      </div>
+      <div class="disagg-card disagg-placement">
+        <span class="disagg-label">Placement Target</span>
+        <span class="disagg-value">45%</span>
+        <span class="disagg-pct">Contribution</span>
+      </div>
+      <div class="disagg-card disagg-reach">
+        <span class="disagg-label">Reachability</span>
+        <span class="disagg-value">60%</span>
+        <span class="disagg-pct">Target</span>
+      </div>
+    </section>
+
+    <!-- Two-Column: Regional Tables + Chart -->
+    <section class="main-grid">
+      <!-- Northern Region Table -->
+      <div class="region-card" id="northernRegion">
+        <div class="region-header northern">
+          <span class="region-dot"></span>
+          <h2>Northern Region</h2>
+          <span class="region-total" id="northTotal">0</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tracker-table">
+            <thead>
+              <tr>
+                <th>State</th><th>Partner</th><th>Regular</th><th>PWD</th><th>IDP</th>
+                <th>Target</th><th>Training</th><th>Unique</th><th>Dupl.</th>
+              </tr>
+            </thead>
+            <tbody id="northBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Southern Region Table -->
+      <div class="region-card" id="southernRegion">
+        <div class="region-header southern">
+          <span class="region-dot"></span>
+          <h2>Southern Region</h2>
+          <span class="region-total" id="southTotal">0</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tracker-table">
+            <thead>
+              <tr>
+                <th>State</th><th>Partner</th><th>Regular</th><th>PWD</th><th>IDP</th>
+                <th>Target</th><th>Training</th><th>Unique</th><th>Dupl.</th>
+              </tr>
+            </thead>
+            <tbody id="southBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Year To Date Section -->
+    <section class="ytd-section" id="ytdSection">
+      <div class="section-title-row">
+        <h2 class="section-title">📅 Year To Date — Feb 2026 to Feb 2027</h2>
+        <div class="ytd-summary">
+          <span>YTD Total Target: <strong id="ytdTotalTarget">0</strong></span>
+          <span>YTD Training: <strong id="ytdTotalTraining">0</strong></span>
+          <span>YTD Unique: <strong id="ytdTotalUnique">0</strong></span>
+        </div>
+      </div>
+      <div class="table-wrap ytd-table-wrap">
+        <table class="ytd-table">
+          <thead>
+            <tr>
+              <th class="sticky-col">State / Partner</th>
+              <th>Feb 26</th><th>Mar 26</th><th>Apr 26</th><th>May 26</th>
+              <th>Jun 26</th><th>Jul 26</th><th>Aug 26</th><th>Sep 26</th>
+              <th>Oct 26</th><th>Nov 26</th><th>Dec 26</th><th>Jan 27</th><th>Feb 27</th>
+              <th class="total-col">YTD Total</th>
+            </tr>
+          </thead>
+          <tbody id="ytdBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Visual Chart Area -->
+    <section class="chart-section">
+      <div class="chart-card">
+        <h3>Monthly Target vs Achievement</h3>
+        <div class="bar-chart" id="barChart"></div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="dot dot-target"></span> Target</span>
+          <span class="legend-item"><span class="dot dot-training"></span> Training</span>
+          <span class="legend-item"><span class="dot dot-unique"></span> Unique</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Regional Distribution</h3>
+        <div class="donut-chart" id="donutChart">
+          <svg viewBox="0 0 200 200" class="donut-svg">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#1e293b" stroke-width="30"/>
+            <circle id="donutNorth" cx="100" cy="100" r="80" fill="none" stroke="#6366f1" stroke-width="30"
+              stroke-dasharray="0 502.65" stroke-dashoffset="125.66" class="donut-segment"/>
+            <circle id="donutSouth" cx="100" cy="100" r="80" fill="none" stroke="#f59e0b" stroke-width="30"
+              stroke-dasharray="0 502.65" stroke-dashoffset="125.66" class="donut-segment"/>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-total" id="donutTotal">56,500</span>
+            <span class="donut-label">Total</span>
+          </div>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="dot" style="background:#6366f1"></span> Northern</span>
+          <span class="legend-item"><span class="dot" style="background:#f59e0b"></span> Southern</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="dash-footer">
+      <p>Jobberman BCWS Target Tracker &copy; 2026 — All Rights Reserved</p>
+    </footer>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
