@@ -435,6 +435,8 @@ function discardDraft() {
     toggleDisability();
     toggleDisabilityOther();
     toggleLanguageOther();
+    togglePreferredIndustryOther();
+    togglePhoneZeroNote();
 
     // Re-enable all language checkboxes (in case Unfilled had disabled them)
     const form2 = document.getElementById('dataForm');
@@ -560,6 +562,8 @@ function restoreDraft(draft) {
     toggleDisability();
     toggleDisabilityOther();
     toggleLanguageOther();
+    togglePreferredIndustryOther();
+    togglePhoneZeroNote();
 
     // Restore snapshot previews if draft contains image data
     ['pretest', 'posttest'].forEach(key => {
@@ -673,6 +677,39 @@ function toggleLanguageOther() {
     } else {
         otherGroup.style.display = 'none';
         if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Preferred Industry "Other" toggle
+// ─────────────────────────────────────────────
+function togglePreferredIndustryOther() {
+    const prefSelect = document.getElementById('preferred_industry');
+    const otherGroup = document.getElementById('preferred_industry_other_group');
+    const otherInput = document.getElementById('preferred_industry_other');
+    if (!prefSelect || !otherGroup) return;
+
+    if (prefSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+        if (otherInput) otherInput.required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Phone Number Zero Check
+// ─────────────────────────────────────────────
+function togglePhoneZeroNote() {
+    const phoneInput = document.getElementById('phone');
+    const note = document.getElementById('phone_zero_note');
+    if (!phoneInput || !note) return;
+
+    if (phoneInput.value === '0') {
+        note.style.display = 'block';
+    } else {
+        note.style.display = 'none';
     }
 }
 
@@ -792,6 +829,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             enforceUnfilledExclusivity(cb);
         });
     });
+
+    // ── Preferred Industry toggle ──
+    const prefIndSelect = document.getElementById('preferred_industry');
+    if (prefIndSelect) {
+        prefIndSelect.addEventListener('change', () => { togglePreferredIndustryOther(); validateField(prefIndSelect); saveDraft(); });
+        togglePreferredIndustryOther();
+    }
+
+    // ── Phone Zero Check ──
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', togglePhoneZeroNote);
+        togglePhoneZeroNote();
+    }
 
     // ── Attach real-time validation + draft save to ALL form fields ──
     form.querySelectorAll('input, select, textarea').forEach(field => {
@@ -928,6 +979,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             payload.disability_type = payload.disability_type_other;
         }
         delete payload.disability_type_other;
+
+        // Preferred industry: if "Other" was selected, use the typed value
+        if (payload.preferred_industry === 'Other' && payload.preferred_industry_other) {
+            payload.preferred_industry = payload.preferred_industry_other;
+        }
+        delete payload.preferred_industry_other;
 
         // Preferred language: if "Other" was checked, replace it with the typed value
         if (payload.preferred_language && payload.preferred_language.includes('Other')) {
