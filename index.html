@@ -69,6 +69,15 @@
                     or upload a snapshot
                     of the PostTest script.</div>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label">Certificate ID</label>
+                  <div class="input-group">
+                    <span class="input-group-text" id="certIdPrefix">??/PT/</span>
+                    <input type="text" name="certificate_id" id="certificate_id" class="form-control"
+                      pattern="^(NA|\d{7})$" placeholder="7-digit code or NA" required>
+                    <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
+                  </div>
+                </div>
               </fieldset>
 
               <!-- 1. Metadata & Consent -->
@@ -103,15 +112,6 @@
                   </select>
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Certificate ID</label>
-                  <div class="input-group">
-                    <span class="input-group-text" id="certIdPrefix">??/PT/</span>
-                    <input type="text" name="certificate_id" id="certificate_id" class="form-control"
-                      pattern="^(NA|\d{7})$" placeholder="7-digit code or NA" required>
-                    <div class="invalid-feedback">Enter the 7-digit certificate number or NA.</div>
-                  </div>
-                </div>
 
                 <div class="mb-3">
                   <label class="form-label">Do you have the Jobberman SST Certificate?</label>
@@ -129,9 +129,11 @@
                 </div>
               </fieldset>
 
-              <!-- 2. Learner's Biodata Information -->
+              <!-- 1. Metadata & Consent -->
               <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Learner's Biodata Information</legend>
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">
+                  PostTest Section B (Personal Information)
+                </legend>
                 <div class="mb-3">
                   <label class="form-label">Full Name</label>
                   <input type="text" name="name" class="form-control" required
@@ -152,7 +154,8 @@
                       placeholder="10 digits long (starting with 7,8 or 9)">
                     <div id="phone_zero_note" class="alert alert-warning mt-2 py-2 px-3"
                       style="display:none; font-size:0.85rem;">
-                      ⚠️ Please check both PreTest and PostTest to ensure a valid phone number is provided (0 is no longer accepted).
+                      ⚠️ Please check both PreTest and PostTest to ensure a valid phone number is provided (0 is no
+                      longer accepted).
                     </div>
                     <div class="invalid-feedback">Must be exactly 10 digits long (start 7, 8,9), then 0 or 1.</div>
                   </div>
@@ -172,28 +175,6 @@
                   <textarea name="address" class="form-control" rows="2" placeholder="Write NA if not applicable"
                     required></textarea>
                 </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Gender</label>
-                    <select name="gender" class="form-select" required>
-                      <option value="">-- Select --</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                    <div class="invalid-feedback">Please select your gender.</div>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Date of Birth</label>
-                    <input type="date" name="dob" id="dob" class="form-control" required min="1900-01-01"
-                      max="2016-12-31">
-                    <div class="invalid-feedback">Year must be 1900 (unspecified) or between 1960–2016.</div>
-                  </div>
-                </div>
-              </fieldset>
-
-              <!-- 3. Education & Employment -->
-              <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Education & Employment</legend>
                 <div class="mb-3">
                   <label class="form-label">Highest Qualification</label>
                   <select name="qualification" id="qualification" class="form-select" required>
@@ -215,7 +196,7 @@
                   <div class="invalid-feedback">Please select a qualification.</div>
                 </div>
                 <div class="mb-3" id="current_level_group" style="display:none;">
-                  <label class="form-label">Current Level</label>
+                  <label class="form-label">Current Level <span class="text-danger">(Check PreTest)</span></label>
                   <select name="current_level" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Entry Level (100 Lvl)">Entry Level (100 Lvl)</option>
@@ -225,7 +206,7 @@
                   <div class="invalid-feedback">Please select your current level.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Employment Status</label>
+                  <label class="form-label">Employment Status <span class="text-danger">(Check PreTest)</span></label>
                   <select name="employment_status" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Unemployed">Unemployed</option>
@@ -239,6 +220,18 @@
                   <input type="text" name="current_occupation" class="form-control"
                     placeholder="Write NA if not applicable" required>
                   <div class="invalid-feedback">Please enter your occupation.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Income Range <span class="text-danger">(Check PreTest)</span></label>
+                  <select name="income_range" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    <option value="Below 70,000">Below 70,000</option>
+                    <option value="70,000 to 150,000">70,000 to 150,000</option>
+                    <option value="150,000 to 300,000">150,000 to 300,000</option>
+                    <option value="300,000 to 500,000">300,000 to 500,000</option>
+                    <option value="500,000 and Above">500,000 and Above</option>
+                  </select>
+                  <div class="invalid-feedback">Please select an income range.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Preferred Job Occupation or Industry?</label>
@@ -265,23 +258,32 @@
                     required>
                   <div class="invalid-feedback">Please enter your top skills.</div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Income Range</label>
-                  <select name="income_range" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Below 70,000">Below 70,000</option>
-                    <option value="70,000 to 150,000">70,000 to 150,000</option>
-                    <option value="150,000 to 300,000">150,000 to 300,000</option>
-                    <option value="300,000 to 500,000">300,000 to 500,000</option>
-                    <option value="500,000 and Above">500,000 and Above</option>
-                  </select>
-                  <div class="invalid-feedback">Please select an income range.</div>
-                </div>
               </fieldset>
 
-              <!-- 4. Demographics & Background -->
+              <!-- 2. PreTest Section -->
               <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Demographics & Background</legend>
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">
+                  PreTest Section A (Personal Information)
+                </legend>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-select" required>
+                      <option value="">-- Select --</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    <div class="invalid-feedback">Please select your gender.</div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" name="dob" id="dob" class="form-control" required min="1900-01-01"
+                      max="2016-12-31">
+                    <div class="invalid-feedback">Year must be 1900 (unspecified) or between 1960–2016.</div>
+                  </div>
+                </div>
+
                 <div class="mb-3">
                   <label class="form-label">Institution | Partner | Disaggregation | Date =&gt; Facilitator |
                     Vols</label>
@@ -342,131 +344,130 @@
               </fieldset>
 
               <!-- 5. Business & Tech Access -->
-              <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Business & Tech Access</legend>
-                <div class="mb-3">
-                  <label class="form-label">Do You Have an Existing Business?</label>
-                  <select name="existing_business" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                  <div class="invalid-feedback">Please select an option.</div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Nature of the Business (Industry / Sector)</label>
-                  <select name="business_nature" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Advertising, Media & Communications">Advertising, Media & Communications</option>
-                    <option value="Agriculture, Fishing & Forestry">Agriculture, Fishing & Forestry</option>
-                    <option value="Automotive & Aviation">Automotive & Aviation</option>
-                    <option value="Banking, Finance & Insurance">Banking, Finance & Insurance</option>
-                    <option value="Construction">Construction</option>
-                    <option value="Education">Education</option>
-                    <option value="Energy & Utilities">Energy & Utilities</option>
-                    <option value="Enforcement & Security">Enforcement & Security</option>
-                    <option value="Entertainment, Events & Sport">Entertainment, Events & Sport</option>
-                    <option value="Government">Government</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Hospitality & Hotel">Hospitality & Hotel</option>
-                    <option value="IT & Telecoms">IT & Telecoms</option>
-                    <option value="Law & Compliance">Law & Compliance</option>
-                    <option value="Manufacturing & Warehousing">Manufacturing & Warehousing</option>
-                    <option value="Mining, Energy & Metals">Mining, Energy & Metals</option>
-                    <option value="NGO, NPO & Charity">NGO, NPO & Charity</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Recruitment">Recruitment</option>
-                    <option value="Retail, Fashion & FMCG">Retail, Fashion & FMCG</option>
-                    <option value="Shipping & Logistics">Shipping & Logistics</option>
-                    <option value="Tourism & Travel">Tourism & Travel</option>
-                    <option value="Unspecified">Unspecified</option>
-                    <option value="Arts and Interior Decor">Arts and Interior Decor</option>
-                    <option value="Beauty and Lifestyle">Beauty and Lifestyle</option>
-                    <option value="Handiwork and Repairs">Handiwork and Repairs</option>
-                  </select>
-                  <div class="invalid-feedback">Please select the nature of your business.</div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Any Formal Training, Skills, or Certification?</label>
-                  <select name="formal_training" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                  <div class="invalid-feedback">Please select an option.</div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Do You Have Access to a Smartphone or Computer?</label>
-                  <select name="tech_access" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                  <div class="invalid-feedback">Please select an option.</div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Do You Have Internet Access at Home or Work?</label>
-                  <select name="internet_access" class="form-select" required>
-                    <option value="">-- Select --</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                  <div class="invalid-feedback">Please select an option.</div>
-                </div>
-                <div class="mb-3" id="lang_group">
-                  <label class="form-label">Preferred Language for Follow-Up Call (select all that apply) <span
-                      class="text-danger">*</span></label>
-                  <div class="d-flex flex-wrap gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="English"
-                        id="langEnglish">
-                      <label class="form-check-label" for="langEnglish">English</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="Hausa"
-                        id="langHausa">
-                      <label class="form-check-label" for="langHausa">Hausa</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="Yoruba"
-                        id="langYoruba">
-                      <label class="form-check-label" for="langYoruba">Yoruba</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="Igbo"
-                        id="langIgbo">
-                      <label class="form-check-label" for="langIgbo">Igbo</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="Pidgin English"
-                        id="langPidgin">
-                      <label class="form-check-label" for="langPidgin">Pidgin English</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language"
-                        value="Unfilled (left blank)" id="langUnfilled">
-                      <label class="form-check-label" for="langUnfilled">Unfilled (left blank)</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="preferred_language" value="Other"
-                        id="langOther">
-                      <label class="form-check-label" for="langOther">Other</label>
-                    </div>
+              <div class="mb-3">
+                <label class="form-label">Do You Have an Existing Business?</label>
+                <select name="existing_business" class="form-select" required>
+                  <option value="">-- Select --</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <div class="invalid-feedback">Please select an option.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Nature of the Business (Industry / Sector)</label>
+                <select name="business_nature" class="form-select" required>
+                  <option value="">-- Select --</option>
+                  <option value="Advertising, Media & Communications">Advertising, Media & Communications</option>
+                  <option value="Agriculture, Fishing & Forestry">Agriculture, Fishing & Forestry</option>
+                  <option value="Automotive & Aviation">Automotive & Aviation</option>
+                  <option value="Banking, Finance & Insurance">Banking, Finance & Insurance</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Education">Education</option>
+                  <option value="Energy & Utilities">Energy & Utilities</option>
+                  <option value="Enforcement & Security">Enforcement & Security</option>
+                  <option value="Entertainment, Events & Sport">Entertainment, Events & Sport</option>
+                  <option value="Government">Government</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Hospitality & Hotel">Hospitality & Hotel</option>
+                  <option value="IT & Telecoms">IT & Telecoms</option>
+                  <option value="Law & Compliance">Law & Compliance</option>
+                  <option value="Manufacturing & Warehousing">Manufacturing & Warehousing</option>
+                  <option value="Mining, Energy & Metals">Mining, Energy & Metals</option>
+                  <option value="NGO, NPO & Charity">NGO, NPO & Charity</option>
+                  <option value="Real Estate">Real Estate</option>
+                  <option value="Recruitment">Recruitment</option>
+                  <option value="Retail, Fashion & FMCG">Retail, Fashion & FMCG</option>
+                  <option value="Shipping & Logistics">Shipping & Logistics</option>
+                  <option value="Tourism & Travel">Tourism & Travel</option>
+                  <option value="Unspecified">Unspecified</option>
+                  <option value="Arts and Interior Decor">Arts and Interior Decor</option>
+                  <option value="Beauty and Lifestyle">Beauty and Lifestyle</option>
+                  <option value="Handiwork and Repairs">Handiwork and Repairs</option>
+                </select>
+                <div class="invalid-feedback">Please select the nature of your business.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Any Formal Training, Skills, or Certification?</label>
+                <select name="formal_training" class="form-select" required>
+                  <option value="">-- Select --</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <div class="invalid-feedback">Please select an option.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Do You Have Access to a Smartphone or Computer?</label>
+                <select name="tech_access" class="form-select" required>
+                  <option value="">-- Select --</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <div class="invalid-feedback">Please select an option.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Do You Have Internet Access at Home or Work?</label>
+                <select name="internet_access" class="form-select" required>
+                  <option value="">-- Select --</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <div class="invalid-feedback">Please select an option.</div>
+              </div>
+              <div class="mb-3" id="lang_group">
+                <label class="form-label">Preferred Language for Follow-Up Call (select all that apply) <span
+                    class="text-danger">*</span></label>
+                <div class="d-flex flex-wrap gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="English"
+                      id="langEnglish">
+                    <label class="form-check-label" for="langEnglish">English</label>
                   </div>
-                  <div id="lang_validation_msg" class="text-danger small mt-1" style="display:none;">Please select at
-                    least one language.</div>
-                  <div id="lang_other_group" class="mt-2" style="display:none;">
-                    <input type="text" id="lang_other_input" name="preferred_language_other" class="form-control"
-                      placeholder="Specify other language">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="Hausa"
+                      id="langHausa">
+                    <label class="form-check-label" for="langHausa">Hausa</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="Yoruba"
+                      id="langYoruba">
+                    <label class="form-check-label" for="langYoruba">Yoruba</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="Igbo"
+                      id="langIgbo">
+                    <label class="form-check-label" for="langIgbo">Igbo</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="Pidgin English"
+                      id="langPidgin">
+                    <label class="form-check-label" for="langPidgin">Pidgin English</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language"
+                      value="Unfilled (left blank)" id="langUnfilled">
+                    <label class="form-check-label" for="langUnfilled">Unfilled (left blank)</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="preferred_language" value="Other"
+                      id="langOther">
+                    <label class="form-check-label" for="langOther">Other</label>
                   </div>
                 </div>
-              </fieldset>
+                <div id="lang_validation_msg" class="text-danger small mt-1" style="display:none;">Please select at
+                  least one language.</div>
+                <div id="lang_other_group" class="mt-2" style="display:none;">
+                  <input type="text" id="lang_other_input" name="preferred_language_other" class="form-control"
+                    placeholder="Specify other language">
+                </div>
+              </div>
 
               <!-- 6. Training & Job Search -->
               <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Training & Job Search</legend>
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">
+                  PreTest Section C (Training & Job Search)
+                </legend>
                 <div class="mb-3">
-                  <label class="form-label">Have you ever participated in any soft skills or employability training
+                  <label class="form-label">1. Have you ever participated in any soft skills or employability training
                     before?</label>
                   <select name="prev_soft_skills" class="form-select" required>
                     <option value="">-- Select --</option>
@@ -477,7 +478,7 @@
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Why do you want to take this training?</label>
+                  <label class="form-label">2. Why do you want to take this training?</label>
                   <select name="training_reason" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Improve my chances of getting a job">Improve my chances of getting a job</option>
@@ -498,18 +499,18 @@
                   <div class="invalid-feedback">Please select a reason.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">How confident are you in your current soft skills?</label>
+                  <label class="form-label">3. How confident are you in your current soft skills?</label>
                   <select name="confidence_level" class="form-select" required>
                     <option value="">-- Select --</option>
-                    <option value="Not Confident">Not Confident</option>
-                    <option value="Somewhat Confident">Somewhat Confident</option>
                     <option value="Very Confident">Very Confident</option>
+                    <option value="Somewhat Confident">Somewhat Confident</option>
+                    <option value="Not Confident">Not Confident</option>
                     <option value="Unticked (left blank)">Unticked (left blank)</option>
                   </select>
                   <div class="invalid-feedback">Please select a confidence level.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">How long have you been actively looking for a job?</label>
+                  <label class="form-label">4.How long have you been actively looking for a job?</label>
                   <select name="job_search_duration" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Less than 3 months">Less than 3 months</option>
@@ -522,7 +523,7 @@
                   <div class="invalid-feedback">Please select a duration.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">What is the biggest challenge you face in your job search?</label>
+                  <label class="form-label">5. What is the biggest challenge you face in your job search?</label>
                   <select name="job_search_challenge" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Lack of relevant skills">Lack of relevant skills</option>
@@ -541,7 +542,8 @@
                   <div class="invalid-feedback">Please select a challenge.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">After completing this training, what is the most important outcome you want
+                  <label class="form-label">6.After completing this training, what is the most important outcome you
+                    want
                     to achieve?</label>
                   <select name="desired_outcome" class="form-select" required>
                     <option value="">-- Select --</option>
@@ -556,7 +558,7 @@
                   <div class="invalid-feedback">Please select a desired outcome.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Do you currently have a CV/Resume?</label>
+                  <label class="form-label">7. Do you currently have a CV/Resume?</label>
                   <select name="has_cv" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
@@ -571,9 +573,12 @@
 
               <!-- 7. Feedback -->
               <fieldset class="mb-4">
-                <legend class="h5 text-primary border-bottom pb-2 mb-3">Feedback</legend>
+                <legend class="h5 text-primary border-bottom pb-2 mb-3">
+                  PostTest Section D (Training Feedback Survey)
+                </legend>
                 <div class="mb-3">
-                  <label class="form-label">How would you rate the overall conduciveness of the training hall?</label>
+                  <label class="form-label">1. How would you rate the overall conduciveness of the training
+                    hall?</label>
                   <select name="hall_rating" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Good">Good</option>
@@ -583,7 +588,8 @@
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Were the training facilities and equipment adequate for the program?</label>
+                  <label class="form-label">2. Were the training facilities and equipment adequate for the
+                    program?</label>
                   <select name="facilities_adequate" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
@@ -593,7 +599,7 @@
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
 
-                <legend class="h6 text-secondary mt-3 mb-2">Refreshments Served</legend>
+                <legend class="h6 text-secondary mt-3 mb-2">3. Refreshments Served</legend>
                 <div class="mb-3">
                   <label class="form-label">Biscuit</label>
                   <select id="ref_biscuit" name="ref_biscuit" class="form-select" required>
@@ -620,7 +626,7 @@
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Are you satisfied with the quality of the refreshments served?</label>
+                  <label class="form-label">4. Are you satisfied with the quality of the refreshments served?</label>
                   <select name="refreshment_satisfaction" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Yes">Yes</option>
@@ -630,7 +636,7 @@
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Did the availability of refreshments enhance your training
+                  <label class="form-label">5. Did the availability of refreshments enhance your training
                     experience?</label>
                   <select name="refreshment_enhanced" class="form-select" required>
                     <option value="">-- Select --</option>
@@ -641,7 +647,7 @@
                   <div class="invalid-feedback">Please select an option.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">How would you rate the facilitator's overall performance?</label>
+                  <label class="form-label">6. How would you rate the facilitator's overall performance?</label>
                   <select name="facilitator_rating" class="form-select" required>
                     <option value="">-- Select --</option>
                     <option value="Excellent">Excellent</option>
