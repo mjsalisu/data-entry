@@ -72,63 +72,63 @@ function doPost(e) {
       data.phone              || '',    // I: Phone Number
       data.phone_type         || '',    // J: Phone Number Type
       data.alt_phone          || '',    // K: Alternative Phone
-      data.address            || '',    // K: Home Address
-      data.gender             || '',    // L: Gender
-      data.dob                || '',    // M: Date of Birth
+      data.address            || '',    // L: Home Address
+      data.gender             || '',    // M: Gender
+      data.dob                || '',    // N: Date of Birth
 
       // ── Education & Employment ──────────────
-      data.qualification      || '',    // N: Highest Qualification
-      data.current_level      || '',    // O: Current Level (if Undergraduate)
-      data.employment_status  || '',    // P: Employment Status
-      data.current_occupation || '',    // Q: Current Occupation
-      data.preferred_industry || '',    // R: Preferred Job Occupation or Industry
-      data.preferred_job_role || '',    // S: Preferred Job Role
-      data.top_skills         || '',    // S: Top 2-3 Skills
-      data.income_range       || '',    // T: Income Range
+      data.qualification      || '',    // O: Highest Qualification
+      data.current_level      || '',    // P: Current Level (if Undergraduate)
+      data.employment_status  || '',    // Q: Employment Status
+      data.current_occupation || '',    // R: Current Occupation
+      data.preferred_industry || '',    // S: Preferred Job Occupation or Industry
+      data.preferred_job_role || '',    // T: Preferred Job Role
+      data.top_skills         || '',    // U: Top 2-3 Skills
+      data.income_range       || '',    // V: Income Range
 
       // ── Demographics & Background ───────────
-      data.state              || '',    // U: State
-      data.training_details   || '',    // V: Training Details (Institution|Partner|etc)
-      data.settlement         || '',    // W: Residential Settlement
-      data.idp                || '',    // X: Internally Displaced Person?
-      data.disability         || '',    // Y: Any Form of Disability?
-      data.disability_type    || '',    // Z: Disability Type
+      data.state              || '',    // W: State
+      data.training_details   || '',    // X: Training Details (Institution|Partner|etc)
+      data.settlement         || '',    // Y: Residential Settlement
+      data.idp                || '',    // Z: Internally Displaced Person?
+      data.disability         || '',    // AA: Any Form of Disability?
+      data.disability_type    || '',    // AB: Disability Type
 
       // ── Business & Tech Access ──────────────
-      data.existing_business  || '',    // AA: Do You Have an Existing Business?
-      data.business_nature    || '',    // AB: Nature of the Business
-      data.formal_training    || '',    // AC: Any Formal Training / Certification?
-      data.tech_access        || '',    // AD: Access to Smartphone or Computer?
-      data.internet_access    || '',    // AE: Internet Access at Home or Work?
-      data.preferred_language || '',    // AF: Preferred Language for Follow-Up
+      data.existing_business  || '',    // AC: Do You Have an Existing Business?
+      data.business_nature    || '',    // AD: Nature of the Business
+      data.formal_training    || '',    // AE: Any Formal Training / Certification?
+      data.tech_access        || '',    // AF: Access to Smartphone or Computer?
+      data.internet_access    || '',    // AG: Internet Access at Home or Work?
+      data.preferred_language || '',    // AH: Preferred Language for Follow-Up
 
       // ── Training & Job Search ───────────────
-      data.prev_soft_skills   || '',    // AG: Prev. Soft Skills Training?
-      data.training_reason    || '',    // AH: Why do you want this training?
-      data.confidence_level   || '',    // AI: Confidence in Current Soft Skills
-      data.job_search_duration|| '',    // AJ: How long actively job seeking?
-      data.job_search_challenge|| '',   // AK: Biggest job search challenge
-      data.desired_outcome    || '',    // AL: Most important training outcome
-      data.has_cv             || '',    // AM: Do you have a CV/Resume?
+      data.prev_soft_skills   || '',    // AI: Prev. Soft Skills Training?
+      data.training_reason    || '',    // AJ: Why do you want this training?
+      data.confidence_level   || '',    // AK: Confidence in Current Soft Skills
+      data.job_search_duration|| '',    // AL: How long actively job seeking?
+      data.job_search_challenge|| '',   // AM: Biggest job search challenge
+      data.desired_outcome    || '',    // AN: Most important training outcome
+      data.has_cv             || '',    // AO: Do you have a CV/Resume?
 
       // ── Feedback ────────────────────────────
-      data.hall_rating          || '',  // AN: Hall Conduciveness Rating
-      data.facilities_adequate  || '',  // AO: Facilities Adequate?
-      data.ref_biscuit          || '',  // AP: Refreshment - Biscuit
-      data.ref_drink            || '',  // AQ: Refreshment - Drink
-      data.ref_water            || '',  // AR: Refreshment - Water
-      data.refreshment_satisfaction || '', // AS: Satisfied with Refreshments?
-      data.refreshment_enhanced || '',  // AT: Refreshments Enhanced Training?
-      data.facilitator_rating   || '',  // AU: Facilitator Performance Rating
+      data.hall_rating          || '',  // AP: Hall Conduciveness Rating
+      data.facilities_adequate  || '',  // AQ: Facilities Adequate?
+      data.ref_biscuit          || '',  // AR: Refreshment - Biscuit
+      data.ref_drink            || '',  // AS: Refreshment - Drink
+      data.ref_water            || '',  // AT: Refreshment - Water
+      data.refreshment_satisfaction || '', // AU: Satisfied with Refreshments?
+      data.refreshment_enhanced || '',  // AV: Refreshments Enhanced Training?
+      data.facilitator_rating   || '',  // AW: Facilitator Performance Rating
 
       // ── Snapshots ───────────────────────────
-      pretestResult.url,                // AV: Snapshot of PreTest Script (URL)
-      pretestResult.path,               // AW: PreTest PathName
-      posttestResult.url,               // AX: Snapshot of PostTest Script (URL)
-      posttestResult.path,              // AY: PostTest PathName
+      pretestResult.url,                // AX: Snapshot of PreTest Script (URL)
+      pretestResult.path,               // AY: PreTest PathName
+      posttestResult.url,               // AZ: Snapshot of PostTest Script (URL)
+      posttestResult.path,              // BA: PostTest PathName
 
       // ── Duplicate Flag ──────────────────────
-      data.is_duplicate       || '',    // AZ: Is this a duplicate?
+      data.is_duplicate       || '',    // BB: Is this a duplicate?
     ]);
 
     return ContentService
