@@ -437,6 +437,7 @@ function discardDraft() {
     toggleLanguageOther();
     togglePreferredIndustryOther();
     togglePhoneZeroNote();
+    toggleExistingBusiness();
 
     // Re-enable all language checkboxes (in case Unfilled had disabled them)
     const form2 = document.getElementById('dataForm');
@@ -564,6 +565,7 @@ function restoreDraft(draft) {
     toggleLanguageOther();
     togglePreferredIndustryOther();
     togglePhoneZeroNote();
+    toggleExistingBusiness();
 
     // Restore snapshot previews if draft contains image data
     ['pretest', 'posttest'].forEach(key => {
@@ -695,6 +697,24 @@ function togglePreferredIndustryOther() {
     } else {
         otherGroup.style.display = 'none';
         if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Existing Business → Nature of Business toggle
+// ─────────────────────────────────────────────
+function toggleExistingBusiness() {
+    const existingSelect = document.getElementById('existing_business');
+    const natureGroup = document.getElementById('business_nature_group');
+    const natureSelect = document.getElementById('business_nature');
+    if (!existingSelect || !natureGroup) return;
+
+    if (existingSelect.value === 'Yes') {
+        natureGroup.style.display = 'block';
+        if (natureSelect) natureSelect.required = true;
+    } else {
+        natureGroup.style.display = 'none';
+        if (natureSelect) { natureSelect.required = false; natureSelect.value = ''; }
     }
 }
 
@@ -842,6 +862,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (phoneInput) {
         phoneInput.addEventListener('input', togglePhoneZeroNote);
         togglePhoneZeroNote();
+    }
+
+    // ── Existing Business toggle ──
+    const existingBizSelect = document.getElementById('existing_business');
+    if (existingBizSelect) {
+        existingBizSelect.addEventListener('change', () => { toggleExistingBusiness(); validateField(existingBizSelect); saveDraft(); });
+        toggleExistingBusiness();
     }
 
     // ── Attach real-time validation + draft save to ALL form fields ──
@@ -995,6 +1022,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .join(', ');
         }
         delete payload.preferred_language_other;
+
+        // ── Phone number prepending 234 ──
+        if (payload.phone && payload.phone !== '0' && payload.phone !== 'NA' && !payload.phone.startsWith('234')) {
+            payload.phone = '234' + payload.phone;
+        }
+        if (payload.alt_phone && payload.alt_phone !== '0' && payload.alt_phone !== 'NA' && !payload.alt_phone.startsWith('234')) {
+            payload.alt_phone = '234' + payload.alt_phone;
+        }
 
         console.log('Submitting payload:', payload);
 

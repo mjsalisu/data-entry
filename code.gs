@@ -71,6 +71,7 @@ function doPost(e) {
       data.email              || '',    // H: Email
       data.phone              || '',    // I: Phone Number
       data.phone_type         || '',    // J: Phone Number Type
+      data.alt_phone          || '',    // K: Alternative Phone
       data.address            || '',    // K: Home Address
       data.gender             || '',    // L: Gender
       data.dob                || '',    // M: Date of Birth
@@ -81,6 +82,7 @@ function doPost(e) {
       data.employment_status  || '',    // P: Employment Status
       data.current_occupation || '',    // Q: Current Occupation
       data.preferred_industry || '',    // R: Preferred Job Occupation or Industry
+      data.preferred_job_role || '',    // S: Preferred Job Role
       data.top_skills         || '',    // S: Top 2-3 Skills
       data.income_range       || '',    // T: Income Range
 

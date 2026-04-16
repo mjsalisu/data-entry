@@ -151,7 +151,7 @@
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Phone Number</label>
                     <input type="tel" id="phone" name="phone" class="form-control" required pattern="^[789][01]\d{8}$"
-                      placeholder="10 digits long (starting with 7,8 or 9)">
+                      placeholder="10 digits long (starting with 7, 8 or 9)">
                     <div id="phone_zero_note" class="alert alert-warning mt-2 py-2 px-3"
                       style="display:none; font-size:0.85rem;">
                       ⚠️ Please check both PreTest and PostTest to ensure a valid phone number is provided (0 is no
@@ -171,9 +171,13 @@
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Home Address</label>
-                  <textarea name="address" class="form-control" rows="2" placeholder="Write NA if not applicable"
-                    required></textarea>
+                  <label class="form-label">Alternative Phone (Optional)
+                    <span class="text-danger mt-2 py-2 px-3" style="font-size:0.85rem;">
+                      <small><br>Check PreTest if the contacts are different, record it.</small>
+                    </span></label>
+                  <input type="tel" id="alt_phone" name="alt_phone" class="form-control" pattern="^[789][01]\d{8}$"
+                    placeholder="10 digits long (starting with 7, 8 or 9)">
+                  <div class="invalid-feedback">Must be exactly 10 digits long (start 7, 8, 9), then 0 or 1.</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Highest Qualification</label>
@@ -253,6 +257,12 @@
                   <div class="invalid-feedback">Please specify the preferred industry.</div>
                 </div>
                 <div class="mb-3">
+                  <label class="form-label">Please indicate your preferred job role.</label>
+                  <input type="text" name="preferred_job_role" class="form-control"
+                    placeholder="(e.g., Sales, Admin, IT Officer, etc) or NA if not applicable" required>
+                  <div class="invalid-feedback">Please enter your preferred job role.</div>
+                </div>
+                <div class="mb-3">
                   <label class="form-label">Which 2–3 skills do you consider your strongest?</label>
                   <input type="text" name="top_skills" class="form-control" placeholder="Write NA if not applicable"
                     required>
@@ -275,6 +285,11 @@
                       <option value="Female">Female</option>
                     </select>
                     <div class="invalid-feedback">Please select your gender.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Home Address <span class="text-danger">(Check PostTest)</span></label>
+                    <textarea name="address" class="form-control" rows="2" placeholder="Write NA if not applicable"
+                      required></textarea>
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Date of Birth</label>
@@ -346,16 +361,16 @@
               <!-- 5. Business & Tech Access -->
               <div class="mb-3">
                 <label class="form-label">Do You Have an Existing Business?</label>
-                <select name="existing_business" class="form-select" required>
+                <select id="existing_business" name="existing_business" class="form-select" required>
                   <option value="">-- Select --</option>
                   <option value="Yes">Yes</option>
                   <option value="No">No</option>
                 </select>
                 <div class="invalid-feedback">Please select an option.</div>
               </div>
-              <div class="mb-3">
+              <div class="mb-3" id="business_nature_group" style="display:none;">
                 <label class="form-label">Nature of the Business (Industry / Sector)</label>
-                <select name="business_nature" class="form-select" required>
+                <select id="business_nature" name="business_nature" class="form-select">
                   <option value="">-- Select --</option>
                   <option value="Advertising, Media & Communications">Advertising, Media & Communications</option>
                   <option value="Agriculture, Fishing & Forestry">Agriculture, Fishing & Forestry</option>
