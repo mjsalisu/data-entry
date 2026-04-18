@@ -4,9 +4,20 @@
  * Caches the app shell (HTML, JS, CSS) so the app loads instantly
  * even without internet. Uses cache-first for static assets and
  * network-first for the dynamic fields API.
+ *
+ * Update flow:
+ *  1. When a new sw.js is deployed (CACHE_VERSION changes), the browser
+ *     detects it and installs the new SW in the background.
+ *  2. The new SW does NOT auto-activate — it waits for the page to
+ *     send a SKIP_WAITING message.
+ *  3. The page checks for pending uploads in IndexedDB.
+ *     - If pending > 0: show banner "Upload entries first, then tap Update"
+ *     - If pending = 0: auto-update and reload
+ *  4. Once SKIP_WAITING is received, the new SW activates, purges old cache,
+ *     and the page reloads with fresh files.
  */
 
-const CACHE_VERSION = 'dataentry-v1';
+const CACHE_VERSION = 'dataentry-v1.5';
 const APP_SHELL = [
     './',
     './index.html',
@@ -31,6 +42,8 @@ const CDN_URLS = [
 
 /**
  * Install: Pre-cache the app shell.
+ * Does NOT call skipWaiting() — waits for the page to request it
+ * after confirming all pending uploads are done.
  */
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -39,8 +52,18 @@ self.addEventListener('install', (event) => {
             return cache.addAll(APP_SHELL);
         })
     );
-    // Activate immediately without waiting for existing tabs to close
-    self.skipWaiting();
+    // Do NOT skipWaiting here — the page controls when to activate
+});
+
+/**
+ * Listen for SKIP_WAITING message from the page.
+ * This is sent after the page confirms no pending uploads remain.
+ */
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        console.log('[SW] Received SKIP_WAITING — activating new version');
+        self.skipWaiting();
+    }
 });
 
 /**
@@ -55,7 +78,7 @@ self.addEventListener('activate', (event) => {
                         console.log('[SW] Removing old cache:', key);
                         return caches.delete(key);
                     })
-                );
+            );
         })
     );
     // Take control of all open tabs immediately

@@ -49,7 +49,7 @@
       </div>
       <div class="stat-card stat-confirmed">
         <span class="stat-number" id="statConfirmed">0</span>
-        <span class="stat-label">Confirmed</span>
+        <span class="stat-label">Uploaded</span>
       </div>
       <div class="stat-card stat-failed">
         <span class="stat-number" id="statFailed">0</span>
@@ -181,8 +181,95 @@
   <script src="uploader.js"></script>
   <script src="queue.js"></script>
 
-  <!-- Persistent Storage Request -->
+  <!-- PWA Update Flow + Storage -->
   <script>
+    // Register Service Worker with update detection
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          reg.update();
+          setInterval(() => reg.update(), 30 * 60 * 1000);
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                handleSwUpdate(reg);
+              }
+            });
+          });
+
+          if (reg.waiting) handleSwUpdate(reg);
+        })
+        .catch(err => console.warn('[PWA] SW registration failed:', err));
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
+
+    async function handleSwUpdate(registration) {
+      let pendingCount = 0;
+      try {
+        pendingCount = await getPendingCount();
+      } catch (e) { /* ignore */ }
+
+      if (pendingCount === 0) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        showUpdateBanner(registration, pendingCount);
+      }
+    }
+
+    function showUpdateBanner(registration, count) {
+      const existing = document.getElementById('updateBanner');
+      if (existing) existing.remove();
+
+      const banner = document.createElement('div');
+      banner.id = 'updateBanner';
+      banner.innerHTML =
+        '<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:0.88rem;">' +
+        '  <span style="font-size:1.3rem;">🔄</span>' +
+        '  <div style="flex:1;">' +
+        '    <strong>App update available!</strong><br>' +
+        '    <span style="font-size:0.8rem;opacity:0.9;">Upload your ' + count + ' pending entries first, then tap Update.</span>' +
+        '  </div>' +
+        '  <button onclick="applyUpdate()" style="padding:8px 16px;background:#fff;color:#0d47a1;border:none;border-radius:8px;font-weight:700;font-size:0.82rem;cursor:pointer;white-space:nowrap;">Update Now</button>' +
+        '</div>';
+      document.body.prepend(banner);
+
+      const checker = setInterval(async () => {
+        try {
+          const c = await getPendingCount();
+          if (c === 0) {
+            clearInterval(checker);
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        } catch (e) { /* ignore */ }
+      }, 3000);
+
+      window._swRegistration = registration;
+    }
+
+    async function applyUpdate() {
+      let pendingCount = 0;
+      try { pendingCount = await getPendingCount(); } catch (e) { /* ignore */ }
+
+      if (pendingCount > 0) {
+        const proceed = confirm(
+          'You still have ' + pendingCount + ' entries not yet uploaded.\n\n' +
+          'Updating will reload the app. Your saved entries will NOT be deleted, ' +
+          'but upload them first to be safe.\n\nProceed?'
+        );
+        if (!proceed) return;
+      }
+
+      if (window._swRegistration && window._swRegistration.waiting) {
+        window._swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    }
+
+    // Persistent storage
     if (navigator.storage && navigator.storage.persist) {
       navigator.storage.persist().then(granted => {
         console.log('[Storage] Persistent storage ' + (granted ? 'granted' : 'denied'));
