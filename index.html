@@ -733,12 +733,18 @@
     </div>
   </div>
 
-  <!-- Floating Queue Badge -->
-  <a href="queue.html" class="queue-badge" id="queueBadge" style="display:none;">
-    <span class="queue-badge-icon">📋</span>
-    <span class="queue-badge-count" id="queueBadgeCount">0</span>
-    <span class="queue-badge-label">pending</span>
-  </a>
+  <!-- Bottom Tab Bar (mobile-app style navigation) -->
+  <nav class="bottom-tab-bar" id="bottomTabBar">
+    <a href="index.html" class="tab-item active" id="tabForm">
+      <span class="tab-icon">📝</span>
+      <span class="tab-label">Form</span>
+    </a>
+    <a href="queue.html" class="tab-item" id="tabQueue">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">Upload Queue</span>
+      <span class="tab-badge" id="queueBadgeCount" style="display:none;">0</span>
+    </a>
+  </nav>
 
   <script src="dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
@@ -749,13 +755,36 @@
   <script src="uploader.js"></script>
   <script src="app.js"></script>
 
-  <!-- PWA Service Worker Registration -->
+  <!-- PWA Service Worker Registration + Storage Protection -->
   <script>
+    // Register Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js')
         .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
         .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
     }
+
+    // Request persistent storage — prevents browser from evicting IndexedDB data
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(granted => {
+        console.log('[Storage] Persistent storage ' + (granted ? 'granted' : 'denied'));
+      });
+    }
+
+    // Warn user before leaving if there are pending entries
+    window.addEventListener('beforeunload', async (e) => {
+      try {
+        // Only warn if navigating away from the site entirely
+        // (not when switching between form and queue pages)
+        if (typeof getPendingCount === 'function') {
+          const count = await getPendingCount();
+          if (count > 0) {
+            e.preventDefault();
+            e.returnValue = 'You have ' + count + ' entries not yet uploaded. Are you sure you want to leave?';
+          }
+        }
+      } catch (err) { /* ignore */ }
+    });
   </script>
 </body>
 

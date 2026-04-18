@@ -1136,20 +1136,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ─────────────────────────────────────────────
-// Queue Badge
+// Queue Badge (Bottom Tab Bar)
 // ─────────────────────────────────────────────
 
 /**
- * Update the floating queue badge with the current pending count.
+ * Update the queue tab badge with the current pending count.
  */
 async function updateQueueBadge() {
     try {
         const count = await getPendingCount();
-        const badge = document.getElementById('queueBadge');
-        const countEl = document.getElementById('queueBadgeCount');
-        if (badge && countEl) {
-            countEl.textContent = count;
-            badge.style.display = count > 0 ? 'flex' : 'none';
+        const badgeEl = document.getElementById('queueBadgeCount');
+        if (badgeEl) {
+            badgeEl.textContent = count;
+            badgeEl.style.display = count > 0 ? 'inline-flex' : 'none';
         }
     } catch (e) {
         // IndexedDB not ready yet — ignore

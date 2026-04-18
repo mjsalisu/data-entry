@@ -314,6 +314,7 @@
 .sub-status-icon.uploaded { background: rgba(129, 199, 132, 0.15); }
 .sub-status-icon.confirmed { background: rgba(105, 240, 174, 0.15); }
 .sub-status-icon.failed { background: rgba(239, 83, 80, 0.15); }
+.sub-status-icon.waiting { background: rgba(255, 152, 0, 0.15); }
 
 .sub-info {
   flex: 1;

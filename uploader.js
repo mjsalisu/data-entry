@@ -5,6 +5,13 @@
  * sends each to the Google Apps Script endpoint, verifies via GET,
  * and communicates progress via BroadcastChannel.
  *
+ * Concurrency protection for 200+ simultaneous users:
+ *  - Random initial jitter (0-10s) so devices don't all start at once
+ *  - Randomized inter-upload delay (2-5s) to spread server load
+ *  - Exponential backoff with jitter on failures (4s → 8s → 16s)
+ *  - UUID duplicate detection (server skips re-writes)
+ *  - Circuit breaker: pauses after 5 consecutive failures
+ *
  * Runs fully async — user can continue entering new forms while uploads happen.
  */
 
@@ -92,8 +99,22 @@ async function uploadAll() {
     _uploadProgress = { current: 0, total: pending.length };
     broadcastMessage('upload_started', { total: pending.length });
 
+    // ── Initial jitter: random 0-10s delay ──
+    // Prevents 200 devices from all hitting the server at t=0
+    const initialDelay = Math.floor(Math.random() * 10000);
+    console.log(`Starting uploads in ${(initialDelay / 1000).toFixed(1)}s (jitter)...`);
+    broadcastMessage('upload_progress', {
+        current: 0,
+        total: pending.length,
+        entryId: null,
+        entryName: 'Waiting...',
+        status: 'scheduling'
+    });
+    await sleep(initialDelay);
+
     let uploaded = 0;
     let failed = 0;
+    let consecutiveFailures = 0;
 
     for (const record of pending) {
         // Check if paused
@@ -105,6 +126,18 @@ async function uploadAll() {
                 failed
             });
             break;
+        }
+
+        // ── Circuit breaker: if server is overwhelmed, slow down significantly ──
+        if (consecutiveFailures >= 5) {
+            // Instead of stopping, wait with a visible countdown and then continue
+            const longWait = 60000 + Math.floor(Math.random() * 30000); // 60-90s
+            console.warn('Server overwhelmed — cooling down for ' + Math.round(longWait / 1000) + 's...');
+
+            // Broadcast a "waiting" status so UI shows countdown
+            await broadcastCountdown(longWait, 'Server is busy. Many users are uploading. Cooling down...');
+
+            consecutiveFailures = 3; // Reset partially, don't fully reset
         }
 
         _currentUploadId = record.id;
@@ -134,15 +167,16 @@ async function uploadAll() {
                 uuid: record.uuid
             };
 
-            // POST to Google Apps Script
-            await fetch(SCRIPT_URL, {
+            // POST with retry + exponential backoff
+            await fetchWithRetry(SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify(fullPayload),
                 mode: 'no-cors'
-            });
+            }, 3); // up to 3 attempts
 
             // Wait before verification (give Apps Script time to process)
-            await sleep(1500);
+            // Randomized 1.5-3s to spread verification load
+            await sleep(1500 + Math.floor(Math.random() * 1500));
 
             // Verify via GET
             const verified = await verifyUpload(record.uuid);
@@ -150,6 +184,7 @@ async function uploadAll() {
             if (verified) {
                 await updateSubmissionStatus(record.id, 'confirmed', null);
                 uploaded++;
+                consecutiveFailures = 0; // Reset on success
                 broadcastMessage('upload_progress', {
                     current: _uploadProgress.current,
                     total: _uploadProgress.total,
@@ -162,6 +197,7 @@ async function uploadAll() {
                 // Mark as uploaded (not confirmed) — user can verify later
                 await updateSubmissionStatus(record.id, 'uploaded', 'Upload sent but not yet verified');
                 uploaded++;
+                consecutiveFailures = 0; // POST succeeded, verification is separate
                 broadcastMessage('upload_progress', {
                     current: _uploadProgress.current,
                     total: _uploadProgress.total,
@@ -173,21 +209,53 @@ async function uploadAll() {
 
         } catch (err) {
             console.error('Upload failed for entry', record.id, err);
-            await updateSubmissionStatus(record.id, 'failed', err.message || 'Network error');
-            failed++;
-            broadcastMessage('upload_progress', {
-                current: _uploadProgress.current,
-                total: _uploadProgress.total,
-                entryId: record.id,
-                entryName: record.payload.name || 'Unknown',
-                status: 'failed',
-                error: err.message
-            });
+            consecutiveFailures++;
+
+            // ── Smart waiting instead of immediate failure ──
+            // If this is a server overload, wait and auto-retry (up to 3 times per entry)
+            if (consecutiveFailures <= 3 && !_paused) {
+                const waitTime = Math.min(5000 * Math.pow(2, consecutiveFailures - 1), 30000);
+                const waitJitter = Math.floor(Math.random() * 3000);
+                const totalWait = waitTime + waitJitter;
+
+                // Mark as "waiting" not "failed" — it will auto-retry
+                await updateSubmissionStatus(record.id, 'pending',
+                    'Server busy \u2014 auto-retrying in ' + Math.round(totalWait / 1000) + 's');
+
+                broadcastMessage('upload_progress', {
+                    current: _uploadProgress.current,
+                    total: _uploadProgress.total,
+                    entryId: record.id,
+                    entryName: record.payload.name || 'Unknown',
+                    status: 'waiting',
+                    waitSeconds: Math.round(totalWait / 1000),
+                    error: 'Server busy \u2014 auto-retrying...'
+                });
+
+                // Countdown wait — broadcast updates every second
+                await broadcastCountdown(totalWait, 'Server busy. Waiting to retry...');
+
+            } else {
+                // Exhausted retries — mark as truly failed
+                await updateSubmissionStatus(record.id, 'failed',
+                    err.message || 'Network error \u2014 tap Retry to try again');
+                failed++;
+                broadcastMessage('upload_progress', {
+                    current: _uploadProgress.current,
+                    total: _uploadProgress.total,
+                    entryId: record.id,
+                    entryName: record.payload.name || 'Unknown',
+                    status: 'failed',
+                    error: err.message || 'Upload failed after multiple retries'
+                });
+            }
         }
 
-        // Delay between uploads to respect Apps Script quotas
-        if (_uploadProgress.current < _uploadProgress.total && !_paused) {
-            await sleep(500);
+        // ── Randomized inter-upload delay (2-5s) ──
+        // Spreads load when 200 users upload simultaneously
+        if (_uploadProgress.current < _uploadProgress.total && !_paused && consecutiveFailures === 0) {
+            const interDelay = 2000 + Math.floor(Math.random() * 3000);
+            await sleep(interDelay);
         }
     }
 
@@ -226,13 +294,13 @@ async function uploadSingle(id) {
             uuid: record.uuid
         };
 
-        await fetch(SCRIPT_URL, {
+        await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(fullPayload),
             mode: 'no-cors'
-        });
+        }, 3);
 
-        await sleep(1500);
+        await sleep(1500 + Math.floor(Math.random() * 1500));
         const verified = await verifyUpload(record.uuid);
 
         if (verified) {
@@ -358,4 +426,59 @@ if (typeof window !== 'undefined') {
  */
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch with retry + exponential backoff.
+ * Used for POST requests that may fail under load from 200+ concurrent users.
+ *
+ * @param {string} url
+ * @param {Object} options - fetch options
+ * @param {number} maxAttempts - max number of attempts (default 3)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, options, maxAttempts) {
+    if (maxAttempts === undefined) maxAttempts = 3;
+
+    let lastError;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } catch (err) {
+            lastError = err;
+            console.warn(`Fetch attempt ${attempt}/${maxAttempts} failed:`, err.message);
+
+            if (attempt < maxAttempts) {
+                // Exponential backoff: 2s, 4s, 8s + random jitter 0-2s
+                const backoff = 2000 * Math.pow(2, attempt - 1);
+                const jitter = Math.floor(Math.random() * 2000);
+                console.log(`Retrying in ${((backoff + jitter) / 1000).toFixed(1)}s...`);
+                await sleep(backoff + jitter);
+            }
+        }
+    }
+
+    throw lastError;
+}
+
+/**
+ * Broadcast a countdown timer so the UI shows live wait time.
+ * Sends a 'waiting' message every second with remaining seconds.
+ *
+ * @param {number} totalMs - Total wait time in milliseconds
+ * @param {string} reason - Human-readable reason for waiting
+ */
+async function broadcastCountdown(totalMs, reason) {
+    const totalSec = Math.ceil(totalMs / 1000);
+    for (let remaining = totalSec; remaining > 0; remaining--) {
+        if (_paused) break;
+        broadcastMessage('upload_waiting', {
+            waitSeconds: remaining,
+            reason: reason,
+            current: _uploadProgress.current,
+            total: _uploadProgress.total
+        });
+        await sleep(1000);
+    }
 }

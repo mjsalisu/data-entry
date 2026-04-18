@@ -129,53 +129,88 @@ select:disabled {
   to { stroke-dashoffset: 0; }
 }
 
-/* ── Floating Queue Badge ── */
-.queue-badge {
+/* ── Bottom Tab Bar (mobile-app style) ── */
+.bottom-tab-bar {
   position: fixed;
-  bottom: 24px;
-  right: 16px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #1a237e, #0d47a1);
-  color: #fff;
-  text-decoration: none;
-  border-radius: 30px;
-  box-shadow: 0 4px 20px rgba(13, 71, 161, 0.4);
   z-index: 1040;
-  font-size: 0.88rem;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  animation: badge-pulse 2s ease-in-out infinite;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
-.queue-badge:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(13, 71, 161, 0.5);
-  color: #fff;
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px 6px;
   text-decoration: none;
+  color: #888;
+  font-size: 0.7rem;
+  font-weight: 500;
+  position: relative;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
-.queue-badge:active { transform: scale(0.95); }
+.tab-item:hover { color: #555; text-decoration: none; }
+.tab-item.active { color: #0d6efd; }
+.tab-item.active .tab-icon { transform: scale(1.1); }
 
-.queue-badge-icon { font-size: 1.1rem; }
-.queue-badge-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+.tab-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  transition: transform 0.2s ease;
+}
+
+.tab-label {
+  letter-spacing: 0.3px;
+}
+
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 24px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.65rem;
   font-weight: 700;
-  min-width: 22px;
-  text-align: center;
-}
-.queue-badge-label {
-  font-size: 0.78rem;
-  opacity: 0.85;
+  border-radius: 9px;
+  line-height: 1;
+  animation: badge-pop 0.3s ease-out;
 }
 
-@keyframes badge-pulse {
-  0%, 100% { box-shadow: 0 4px 20px rgba(13, 71, 161, 0.4); }
-  50% { box-shadow: 0 4px 30px rgba(13, 71, 161, 0.6); }
+@keyframes badge-pop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
 }
+
+/* Push page content up so tab bar doesn't cover it */
+body {
+  padding-bottom: 70px !important;
+}
+
+/* ── Queue page overrides for dark theme ── */
+.queue-body .bottom-tab-bar {
+  background: rgba(15, 18, 45, 0.97);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+}
+.queue-body .tab-item { color: #5566aa; }
+.queue-body .tab-item:hover { color: #8899cc; }
+.queue-body .tab-item.active { color: #64b5f6; }
 
 /* ── Queue page notification animation ── */
 @keyframes slide-down {

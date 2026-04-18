@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCpNdOIlzHRftaFyYFtnAOx-AT-WebfJwtAEcRDgh2VhwILro5DsFVstZLpa5DQyWM/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzLUgMI6kHI_I0nODYqC0CCEoFzEEP_OSLldpHYNt4YMbZZbSvXsnU4njs7L7L28qKV/exec";
 
 /**
  * State code abbreviations for Certificate ID formatting.

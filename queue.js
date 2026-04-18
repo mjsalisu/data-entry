@@ -42,6 +42,7 @@ async function refreshList() {
     await updateStats();
     renderList();
     updateControlsVisibility();
+    updateTabBadge();
 }
 
 /**
@@ -116,7 +117,8 @@ function createEntryElement(entry) {
         uploading: '⬆️',
         uploaded: '☁️',
         confirmed: '✅',
-        failed: '❌'
+        failed: '❌',
+        waiting: '🕒'
     };
 
     const name = entry.payload.name || 'Unknown';
@@ -512,19 +514,25 @@ function handleBroadcast(msg) {
             updateProgress(msg);
             updateEntryInList(msg.entryId, msg.status);
             break;
+        case 'upload_waiting':
+            updateWaitingProgress(msg);
+            break;
         case 'upload_complete':
             refreshList();
             updateStorageMeter();
+            updateTabBadge();
             break;
         case 'upload_paused':
             refreshList();
             break;
         case 'entry_updated':
             refreshList();
+            updateTabBadge();
             break;
         case 'entry_saved':
             refreshList();
             updateStorageMeter();
+            updateTabBadge();
             break;
     }
 }
@@ -540,13 +548,49 @@ function updateProgress(msg) {
     const current = document.getElementById('progressCurrent');
 
     if (container) container.style.display = 'block';
-    if (text) text.textContent = 'Uploading...';
-    if (count) count.textContent = msg.current + '/' + msg.total;
-    if (fill) fill.style.width = Math.round((msg.current / msg.total) * 100) + '%';
-    if (current) {
-        const icon = msg.status === 'confirmed' ? '✅' : msg.status === 'failed' ? '❌' : '⬆️';
-        current.textContent = icon + ' ' + (msg.entryName || 'Entry');
+
+    if (msg.status === 'waiting') {
+        if (text) text.textContent = '🕒 Server busy — auto-retrying...';
+        if (current) current.textContent = '⏳ Waiting ' + (msg.waitSeconds || '') + 's before retry...';
+    } else {
+        if (text) text.textContent = 'Uploading...';
+        if (count) count.textContent = msg.current + '/' + msg.total;
+        if (fill) fill.style.width = Math.round((msg.current / msg.total) * 100) + '%';
+        if (current) {
+            const icon = msg.status === 'confirmed' ? '✅' : msg.status === 'failed' ? '❌' : '⬆️';
+            current.textContent = icon + ' ' + (msg.entryName || 'Entry');
+        }
     }
+}
+
+/**
+ * Update the progress bar during a waiting/cooldown period.
+ * Shows a live countdown: "Server busy — retrying in 12s..."
+ */
+function updateWaitingProgress(msg) {
+    const container = document.getElementById('progressContainer');
+    const text = document.getElementById('progressText');
+    const count = document.getElementById('progressCount');
+    const current = document.getElementById('progressCurrent');
+
+    if (container) container.style.display = 'block';
+    if (text) text.textContent = '🕒 ' + (msg.reason || 'Server busy');
+    if (count) count.textContent = msg.current + '/' + msg.total;
+    if (current) current.textContent = '⏳ Retrying in ' + msg.waitSeconds + 's...';
+}
+
+/**
+ * Update the tab badge count.
+ */
+async function updateTabBadge() {
+    try {
+        const count = await getPendingCount();
+        const badgeEl = document.getElementById('queueBadgeCount');
+        if (badgeEl) {
+            badgeEl.textContent = count;
+            badgeEl.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    } catch (e) { /* ignore */ }
 }
 
 /**
@@ -556,7 +600,7 @@ function updateEntryInList(entryId, status) {
     const item = document.querySelector('.submission-item[data-id="' + entryId + '"]');
     if (!item) return;
 
-    const statusIcons = { pending: '⏳', uploading: '⬆️', uploaded: '☁️', confirmed: '✅', failed: '❌' };
+    const statusIcons = { pending: '⏳', uploading: '⬆️', uploaded: '☁️', confirmed: '✅', failed: '❌', waiting: '🕒' };
     const iconEl = item.querySelector('.sub-status-icon');
     if (iconEl) {
         iconEl.className = 'sub-status-icon ' + status;
@@ -609,7 +653,8 @@ function getStatusLabel(status) {
         uploading: '⬆️ Uploading',
         uploaded: '☁️ Uploaded (awaiting verification)',
         confirmed: '✅ Confirmed',
-        failed: '❌ Failed'
+        failed: '❌ Failed',
+        waiting: '🕒 Waiting to retry'
     };
     return labels[status] || status;
 }

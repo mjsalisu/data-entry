@@ -1,6 +1,10 @@
 /**
  * Handles incoming data from the external HTML form (Jobberman SST Data Entry)
  * Sheet: BCWS_Data
+ *
+ * Uses LockService to prevent concurrent write conflicts when 200+ users
+ * upload simultaneously. Each execution waits up to 30s for the lock.
+ * Also includes UUID-based duplicate detection to prevent re-writes.
  */
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -11,7 +15,26 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
 
     // ─────────────────────────────────────────────
+    // 1.5. Duplicate Detection — check UUID before doing any work
+    //      Prevents re-writing the same submission if client retries
+    // ─────────────────────────────────────────────
+    if (data.uuid) {
+      const existingData = sheet.getDataRange().getValues();
+      const uuidColIndex = 54; // Column BC (0-indexed)
+      for (var i = 1; i < existingData.length; i++) {
+        if (existingData[i][uuidColIndex] &&
+            existingData[i][uuidColIndex].toString().trim() === data.uuid.trim()) {
+          // Already exists — return success without re-writing
+          return ContentService
+            .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────
     // 2. Google Drive Image Uploads (PreTest & PostTest)
+    //    Done OUTSIDE the lock — Drive writes don't conflict with Sheet writes
     // ─────────────────────────────────────────────
     // Root folder
     const rootFolderName = "Participant_Snapshots";
@@ -53,86 +76,102 @@ function doPost(e) {
     const posttestResult = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
-    // 3. Append Row to Google Sheet (BCWS_Data)
-    //    Column order matches the headers visible in the sheet screenshot.
+    // 3. LOCKED WRITE — Acquire script lock before writing to sheet
+    //    This prevents concurrent appendRow calls from 200+ users
+    //    from overwriting each other's rows.
+    //    Each execution waits up to 30 seconds for the lock.
     // ─────────────────────────────────────────────
-    sheet.appendRow([
-      new Date(),                       // A: Timestamp
+    const lock = LockService.getScriptLock();
 
-      // ── Metadata & Consent ──────────────────
-      data.consent            || '',    // B: Participant Consent
-      data.certificate_id     || '',    // C: Certificate ID
-      data.post_test_score    || '',    // D: Post-Test Score
-      data.inputted_by        || '',    // E: Inputted by - Batch of Entry
-      data.jobberman_sst      || '',    // F: Do you have the Jobberman SST Certificate?
+    try {
+      // Wait up to 30 seconds to acquire the lock
+      lock.waitLock(30000);
 
-      // ── Learner's Biodata ───────────────────
-      data.name               || '',    // G: Full Name
-      data.email              || '',    // H: Email
-      data.phone              || '',    // I: Phone Number
-      data.phone_type         || '',    // J: Phone Number Type
-      data.alt_phone          || '',    // K: Alternative Phone
-      data.address            || '',    // L: Home Address
-      data.gender             || '',    // M: Gender
-      data.dob                || '',    // N: Date of Birth
+      sheet.appendRow([
+        new Date(),                       // A: Timestamp
 
-      // ── Education & Employment ──────────────
-      data.qualification      || '',    // O: Highest Qualification
-      data.current_level      || '',    // P: Current Level (if Undergraduate)
-      data.employment_status  || '',    // Q: Employment Status
-      data.current_occupation || '',    // R: Current Occupation
-      data.preferred_industry || '',    // S: Preferred Job Occupation or Industry
-      data.preferred_job_role || '',    // T: Preferred Job Role
-      data.top_skills         || '',    // U: Top 2-3 Skills
-      data.income_range       || '',    // V: Income Range
+        // ── Metadata & Consent ──────────────────
+        data.consent            || '',    // B: Participant Consent
+        data.certificate_id     || '',    // C: Certificate ID
+        data.post_test_score    || '',    // D: Post-Test Score
+        data.inputted_by        || '',    // E: Inputted by - Batch of Entry
+        data.jobberman_sst      || '',    // F: Do you have the Jobberman SST Certificate?
 
-      // ── Demographics & Background ───────────
-      data.state              || '',    // W: State
-      data.training_details   || '',    // X: Training Details (Institution|Partner|etc)
-      data.settlement         || '',    // Y: Residential Settlement
-      data.idp                || '',    // Z: Internally Displaced Person?
-      data.disability         || '',    // AA: Any Form of Disability?
-      data.disability_type    || '',    // AB: Disability Type
+        // ── Learner's Biodata ───────────────────
+        data.name               || '',    // G: Full Name
+        data.email              || '',    // H: Email
+        data.phone              || '',    // I: Phone Number
+        data.phone_type         || '',    // J: Phone Number Type
+        data.alt_phone          || '',    // K: Alternative Phone
+        data.address            || '',    // L: Home Address
+        data.gender             || '',    // M: Gender
+        data.dob                || '',    // N: Date of Birth
 
-      // ── Business & Tech Access ──────────────
-      data.existing_business  || '',    // AC: Do You Have an Existing Business?
-      data.business_nature    || '',    // AD: Nature of the Business
-      data.formal_training    || '',    // AE: Any Formal Training / Certification?
-      data.tech_access        || '',    // AF: Access to Smartphone or Computer?
-      data.internet_access    || '',    // AG: Internet Access at Home or Work?
-      data.preferred_language || '',    // AH: Preferred Language for Follow-Up
+        // ── Education & Employment ──────────────
+        data.qualification      || '',    // O: Highest Qualification
+        data.current_level      || '',    // P: Current Level (if Undergraduate)
+        data.employment_status  || '',    // Q: Employment Status
+        data.current_occupation || '',    // R: Current Occupation
+        data.preferred_industry || '',    // S: Preferred Job Occupation or Industry
+        data.preferred_job_role || '',    // T: Preferred Job Role
+        data.top_skills         || '',    // U: Top 2-3 Skills
+        data.income_range       || '',    // V: Income Range
 
-      // ── Training & Job Search ───────────────
-      data.prev_soft_skills   || '',    // AI: Prev. Soft Skills Training?
-      data.training_reason    || '',    // AJ: Why do you want this training?
-      data.confidence_level   || '',    // AK: Confidence in Current Soft Skills
-      data.job_search_duration|| '',    // AL: How long actively job seeking?
-      data.job_search_challenge|| '',   // AM: Biggest job search challenge
-      data.desired_outcome    || '',    // AN: Most important training outcome
-      data.has_cv             || '',    // AO: Do you have a CV/Resume?
+        // ── Demographics & Background ───────────
+        data.state              || '',    // W: State
+        data.training_details   || '',    // X: Training Details (Institution|Partner|etc)
+        data.settlement         || '',    // Y: Residential Settlement
+        data.idp                || '',    // Z: Internally Displaced Person?
+        data.disability         || '',    // AA: Any Form of Disability?
+        data.disability_type    || '',    // AB: Disability Type
 
-      // ── Feedback ────────────────────────────
-      data.hall_rating          || '',  // AP: Hall Conduciveness Rating
-      data.facilities_adequate  || '',  // AQ: Facilities Adequate?
-      data.ref_biscuit          || '',  // AR: Refreshment - Biscuit
-      data.ref_drink            || '',  // AS: Refreshment - Drink
-      data.ref_water            || '',  // AT: Refreshment - Water
-      data.refreshment_satisfaction || '', // AU: Satisfied with Refreshments?
-      data.refreshment_enhanced || '',  // AV: Refreshments Enhanced Training?
-      data.facilitator_rating   || '',  // AW: Facilitator Performance Rating
+        // ── Business & Tech Access ──────────────
+        data.existing_business  || '',    // AC: Do You Have an Existing Business?
+        data.business_nature    || '',    // AD: Nature of the Business
+        data.formal_training    || '',    // AE: Any Formal Training / Certification?
+        data.tech_access        || '',    // AF: Access to Smartphone or Computer?
+        data.internet_access    || '',    // AG: Internet Access at Home or Work?
+        data.preferred_language || '',    // AH: Preferred Language for Follow-Up
 
-      // ── Snapshots ───────────────────────────
-      pretestResult.url,                // AX: Snapshot of PreTest Script (URL)
-      pretestResult.path,               // AY: PreTest PathName
-      posttestResult.url,               // AZ: Snapshot of PostTest Script (URL)
-      posttestResult.path,              // BA: PostTest PathName
+        // ── Training & Job Search ───────────────
+        data.prev_soft_skills   || '',    // AI: Prev. Soft Skills Training?
+        data.training_reason    || '',    // AJ: Why do you want this training?
+        data.confidence_level   || '',    // AK: Confidence in Current Soft Skills
+        data.job_search_duration|| '',    // AL: How long actively job seeking?
+        data.job_search_challenge|| '',   // AM: Biggest job search challenge
+        data.desired_outcome    || '',    // AN: Most important training outcome
+        data.has_cv             || '',    // AO: Do you have a CV/Resume?
 
-      // ── Duplicate Flag ──────────────────────
-      data.is_duplicate       || '',    // BB: Is this a duplicate?
+        // ── Feedback ────────────────────────────
+        data.hall_rating          || '',  // AP: Hall Conduciveness Rating
+        data.facilities_adequate  || '',  // AQ: Facilities Adequate?
+        data.ref_biscuit          || '',  // AR: Refreshment - Biscuit
+        data.ref_drink            || '',  // AS: Refreshment - Drink
+        data.ref_water            || '',  // AT: Refreshment - Water
+        data.refreshment_satisfaction || '', // AU: Satisfied with Refreshments?
+        data.refreshment_enhanced || '',  // AV: Refreshments Enhanced Training?
+        data.facilitator_rating   || '',  // AW: Facilitator Performance Rating
 
-      // ── Submission UUID (offline-first tracking) ──
-      data.uuid               || '',    // BC: Submission UUID
-    ]);
+        // ── Snapshots ───────────────────────────
+        pretestResult.url,                // AX: Snapshot of PreTest Script (URL)
+        pretestResult.path,               // AY: PreTest PathName
+        posttestResult.url,               // AZ: Snapshot of PostTest Script (URL)
+        posttestResult.path,              // BA: PostTest PathName
+
+        // ── Duplicate Flag ──────────────────────
+        data.is_duplicate       || '',    // BB: Is this a duplicate?
+
+        // ── Submission UUID (offline-first tracking) ──
+        data.uuid               || '',    // BC: Submission UUID
+      ]);
+
+      // Flush changes immediately so the lock release is safe
+      SpreadsheetApp.flush();
+
+    } finally {
+      // ALWAYS release the lock, even if appendRow throws
+      lock.releaseLock();
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "success" }))
@@ -148,6 +187,7 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
 
 /**
  * Handles GET requests.
