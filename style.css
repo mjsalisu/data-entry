@@ -128,3 +128,57 @@ select:disabled {
 @keyframes draw-tick {
   to { stroke-dashoffset: 0; }
 }
+
+/* ── Floating Queue Badge ── */
+.queue-badge {
+  position: fixed;
+  bottom: 24px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a237e, #0d47a1);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 30px;
+  box-shadow: 0 4px 20px rgba(13, 71, 161, 0.4);
+  z-index: 1040;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+.queue-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(13, 71, 161, 0.5);
+  color: #fff;
+  text-decoration: none;
+}
+.queue-badge:active { transform: scale(0.95); }
+
+.queue-badge-icon { font-size: 1.1rem; }
+.queue-badge-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 22px;
+  text-align: center;
+}
+.queue-badge-label {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(13, 71, 161, 0.4); }
+  50% { box-shadow: 0 4px 30px rgba(13, 71, 161, 0.6); }
+}
+
+/* ── Queue page notification animation ── */
+@keyframes slide-down {
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}

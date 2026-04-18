@@ -129,6 +129,9 @@ function doPost(e) {
 
       // ── Duplicate Flag ──────────────────────
       data.is_duplicate       || '',    // BB: Is this a duplicate?
+
+      // ── Submission UUID (offline-first tracking) ──
+      data.uuid               || '',    // BC: Submission UUID
     ]);
 
     return ContentService
@@ -153,6 +156,38 @@ function doPost(e) {
  */
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || '';
+
+  if (action === 'verify') {
+    var uuid = (e.parameter.uuid || '').trim();
+    if (!uuid) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ found: false, error: 'No UUID provided' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('BCWS_Data');
+    if (!sheet) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ found: false, error: 'Sheet not found' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // BC column (index 54, 0-based) contains the UUID
+    var data = sheet.getDataRange().getValues();
+    var uuidColIndex = 54; // Column BC (0-indexed)
+    var found = false;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][uuidColIndex] && data[i][uuidColIndex].toString().trim() === uuid) {
+        found = true;
+        break;
+      }
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ found: found }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   if (action === 'getDynamicFields') {
     var ss    = SpreadsheetApp.getActiveSpreadsheet();

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Queue — BCWS Data Entry</title>
+  <meta name="description" content="Manage and upload saved offline submissions for Jobberman BCWS Data Entry">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f3460">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link href="dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="queue.css">
+</head>
+
+<body class="queue-body">
+
+  <!-- Top Navigation -->
+  <nav class="queue-nav" id="queueNav">
+    <a href="index.html" class="nav-back" id="navBack">
+      <span class="nav-back-icon">←</span>
+      <span>Form</span>
+    </a>
+    <h1 class="nav-title">Upload Queue</h1>
+    <div class="nav-status" id="navNetworkStatus">
+      <span class="status-dot online" id="statusDot"></span>
+      <span class="status-text" id="statusText">Online</span>
+    </div>
+  </nav>
+
+  <main class="queue-main">
+
+    <!-- Storage Warning Banner -->
+    <div class="storage-warning" id="storageWarning">
+      <span class="warning-icon">⚠️</span>
+      <p>Your submission images are stored in your browser. <strong>Do NOT</strong> clear browser data or use
+        private/incognito mode until all entries are confirmed uploaded.</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card stat-total">
+        <span class="stat-number" id="statTotal">0</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card stat-pending">
+        <span class="stat-number" id="statPending">0</span>
+        <span class="stat-label">Pending</span>
+      </div>
+      <div class="stat-card stat-confirmed">
+        <span class="stat-number" id="statConfirmed">0</span>
+        <span class="stat-label">Confirmed</span>
+      </div>
+      <div class="stat-card stat-failed">
+        <span class="stat-number" id="statFailed">0</span>
+        <span class="stat-label">Failed</span>
+      </div>
+    </div>
+
+    <!-- Storage Meter -->
+    <div class="storage-meter" id="storageMeter">
+      <div class="storage-header">
+        <span class="storage-label">💾 Storage Used</span>
+        <span class="storage-value" id="storageValue">-- MB</span>
+      </div>
+      <div class="storage-bar">
+        <div class="storage-bar-fill" id="storageBarFill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Upload Controls -->
+    <div class="upload-controls" id="uploadControls">
+      <button id="uploadAllBtn" class="btn-upload-all" onclick="handleUploadAll()">
+        <span class="btn-icon">⬆️</span>
+        <span class="btn-text">Upload All</span>
+        <span class="btn-count" id="uploadBtnCount"></span>
+      </button>
+      <button id="pauseBtn" class="btn-pause" onclick="handlePause()" style="display:none;">
+        <span>⏸ Pause</span>
+      </button>
+      <button id="retryAllBtn" class="btn-retry-all" onclick="handleRetryAll()" style="display:none;">
+        <span>🔄 Retry Failed</span>
+      </button>
+    </div>
+
+    <!-- Progress Bar (shown during upload) -->
+    <div class="progress-container" id="progressContainer" style="display:none;">
+      <div class="progress-header">
+        <span class="progress-text" id="progressText">Uploading...</span>
+        <span class="progress-count" id="progressCount">0/0</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+      </div>
+      <div class="progress-current" id="progressCurrent"></div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-filter="all" onclick="filterList('all', this)">All</button>
+      <button class="filter-tab" data-filter="pending" onclick="filterList('pending', this)">⏳ Pending</button>
+      <button class="filter-tab" data-filter="confirmed" onclick="filterList('confirmed', this)">✅ Done</button>
+      <button class="filter-tab" data-filter="failed" onclick="filterList('failed', this)">❌ Failed</button>
+    </div>
+
+    <!-- Submission List -->
+    <div class="submission-list" id="submissionList">
+      <!-- Entries rendered by queue.js -->
+      <div class="empty-state" id="emptyState">
+        <span class="empty-icon">📋</span>
+        <p>No submissions yet</p>
+        <a href="index.html" class="btn-back-form">← Go to Form</a>
+      </div>
+    </div>
+
+    <!-- Cleanup Section -->
+    <div class="cleanup-section" id="cleanupSection" style="display:none;">
+      <button id="clearConfirmedBtn" class="btn-clear-confirmed" onclick="handleClearConfirmed()">
+        🗑️ Clear Confirmed Entries
+      </button>
+      <p class="cleanup-note">Only removes entries that have been verified by the server.</p>
+    </div>
+
+  </main>
+
+  <!-- Confirmation Modal -->
+  <div class="modal-overlay" id="confirmModal" style="display:none;">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modalTitle">Confirm Action</h3>
+      <p class="modal-message" id="modalMessage"></p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="modalCancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn modal-btn-confirm" id="modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Detail Panel (slide-up) -->
+  <div class="detail-overlay" id="detailOverlay" style="display:none;" onclick="closeDetail(event)">
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-header">
+        <h3 class="detail-title" id="detailTitle">Entry Details</h3>
+        <button class="detail-close" onclick="closeDetail()">&times;</button>
+      </div>
+      <div class="detail-body" id="detailBody">
+        <!-- Populated by JS -->
+      </div>
+      <div class="detail-actions" id="detailActions">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="uploader.js"></script>
+  <script src="queue.js"></script>
+
+</body>
+
+</html>

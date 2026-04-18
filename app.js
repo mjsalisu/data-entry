@@ -1031,18 +1031,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             payload.alt_phone = '234' + payload.alt_phone;
         }
 
-        console.log('Submitting payload:', payload);
+        console.log('Saving payload locally:', payload);
 
-        fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            mode: 'no-cors'
-        })
-            .then(() => {
-                // Clear draft on successful submission
+        // ── Save to IndexedDB (offline-first) ──
+        const images = {
+            pretest: payload.image_pretest || '',
+            posttest: payload.image_posttest || ''
+        };
+        // Remove raw image data from payload (stored as Blobs separately)
+        delete payload.image_pretest;
+        delete payload.image_posttest;
+
+        saveSubmission(payload, images)
+            .then(async (result) => {
+                // Clear draft on successful save
                 localStorage.removeItem(DRAFT_KEY);
 
-                // Increment session submission counter
+                // Increment session save counter
                 const SESSION_COUNT_KEY = 'jobberman_submission_count';
                 let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
                 sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
@@ -1052,6 +1057,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const successScreen = document.getElementById('successScreen');
                 successScreen.style.display = 'block';
                 document.getElementById('submissionCount').textContent = count;
+
+                // Update pending count on success screen
+                const pendingCount = await getPendingCount();
+                const pendingEl = document.getElementById('pendingCountSuccess');
+                if (pendingEl) pendingEl.textContent = pendingCount;
+
+                // Update the floating badge
+                updateQueueBadge();
+
+                // Broadcast to queue page that a new entry was saved
+                broadcastMessage('entry_saved', { id: result.id, uuid: result.uuid });
 
                 // Re-trigger the SVG animation by cloning and replacing the SVG
                 const svg = successScreen.querySelector('.success-checkmark svg');
@@ -1064,9 +1080,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             })
             .catch(err => {
-                alert('Error: ' + err.message);
+                alert('Error saving locally: ' + err.message);
                 subBtn.disabled = false;
-                subBtn.innerHTML = 'Submit Registration';
+                subBtn.innerHTML = '💾 Save Entry';
                 loader.style.display = 'none';
             });
     });
@@ -1074,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── "Submit Another Response" Button Handler ──
     const submitAnotherBtn = document.getElementById('submitAnotherBtn');
     if (submitAnotherBtn) {
-        submitAnotherBtn.addEventListener('click', () => {
+        submitAnotherBtn.addEventListener('click', async () => {
             // Hide success screen, show form
             document.getElementById('successScreen').style.display = 'none';
             const formEl = document.getElementById('dataForm');
@@ -1087,9 +1103,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const subBtn = document.getElementById('subBtn');
             if (subBtn) {
                 subBtn.disabled = false;
-                subBtn.innerHTML = 'Submit Registration';
+                subBtn.innerHTML = '💾 Save Entry';
             }
             document.getElementById('loader').style.display = 'none';
+
+            // Update badge
+            await updateQueueBadge();
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1104,4 +1123,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('submissionCount').textContent = '0';
         });
     }
+
+    // ── Update Queue Badge on page load ──
+    updateQueueBadge();
+
+    // ── Listen for broadcast messages (from queue page uploads) ──
+    onBroadcastMessage((msg) => {
+        if (msg.type === 'upload_complete' || msg.type === 'entry_updated') {
+            updateQueueBadge();
+        }
+    });
 });
+
+// ─────────────────────────────────────────────
+// Queue Badge
+// ─────────────────────────────────────────────
+
+/**
+ * Update the floating queue badge with the current pending count.
+ */
+async function updateQueueBadge() {
+    try {
+        const count = await getPendingCount();
+        const badge = document.getElementById('queueBadge');
+        const countEl = document.getElementById('queueBadgeCount');
+        if (badge && countEl) {
+            countEl.textContent = count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        }
+    } catch (e) {
+        // IndexedDB not ready yet — ignore
+    }
+}

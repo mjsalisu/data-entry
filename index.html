@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Entry Portal</title>
+  <meta name="description" content="Jobberman BCWS Data Entry Portal — Offline-first form with bulk upload">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d6efd">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link href="dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -684,12 +689,12 @@
                 </select>
               </div>
 
-              <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Submitting...
+              <div id="loader" class="text-center text-primary fw-bold my-3" style="display:none;">Saving...
               </div>
-              <button type="submit" id="subBtn" class="btn btn-primary w-100 py-2 fw-bold">Submit Data</button>
+              <button type="submit" id="subBtn" class="btn btn-success w-100 py-2 fw-bold">💾 Save Entry</button>
             </form>
 
-            <!-- Success Screen (shown after submission) -->
+            <!-- Success Screen (shown after saving locally) -->
             <div id="successScreen" style="display:none;">
               <div class="text-center py-5">
                 <div class="success-checkmark mb-4">
@@ -700,19 +705,23 @@
                       stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </div>
-                <h3 class="text-success fw-bold mb-2">Submission Successful!</h3>
-                <p class="text-muted mb-4">The entries has been recorded successfully.</p>
-                <div class="d-inline-block bg-light rounded-3 px-4 py-3 mb-4">
-                  <span class="text-muted d-block small">Your submissions this session</span>
+                <h3 class="text-success fw-bold mb-2">Entry Saved Locally!</h3>
+                <p class="text-muted mb-3">The entry has been saved to your device.</p>
+                <div class="d-inline-block bg-light rounded-3 px-4 py-3 mb-3">
+                  <span class="text-muted d-block small">Entries saved this session</span>
                   <span id="submissionCount" class="fs-2 fw-bold text-primary">0</span>
                   <button type="button" id="resetCounterBtn"
                     class="btn btn-sm btn-outline-secondary d-block mx-auto mt-2">
                     🔄 Reset Counter
                   </button>
                 </div>
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size:0.85rem;">
+                  📋 You have <strong id="pendingCountSuccess">0</strong> entries ready to upload.
+                  <a href="queue.html" class="fw-bold">Go to Upload Queue →</a>
+                </div>
                 <div>
                   <button type="button" id="submitAnotherBtn" class="btn btn-primary w-100 py-3 fw-bold">
-                    ➕ Submit Another Response
+                    ➕ Enter Another Record
                   </button>
                 </div>
               </div>
@@ -724,11 +733,30 @@
     </div>
   </div>
 
+  <!-- Floating Queue Badge -->
+  <a href="queue.html" class="queue-badge" id="queueBadge" style="display:none;">
+    <span class="queue-badge-icon">📋</span>
+    <span class="queue-badge-count" id="queueBadgeCount">0</span>
+    <span class="queue-badge-label">pending</span>
+  </a>
+
   <script src="dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
   <script src="config.js"></script>
   <script src="camera.js"></script>
   <script src="datepicker.js"></script>
+  <script src="db.js"></script>
+  <script src="uploader.js"></script>
   <script src="app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+        .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
+    }
+  </script>
 </body>
 
 </html>
