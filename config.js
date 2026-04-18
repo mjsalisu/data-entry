@@ -80,7 +80,7 @@ const REFRESHMENTS = {
             "Munchkin Biscuit (120g)",
             "Yale Rich Short Bread Biscuit (105g)",
             "Yale Digestive Biscuit (2*80g)",
-            "De Flora",
+            "Beloxxi De Flora",
             "Not Provided",
             "Unticked (left blank)"
         ],
