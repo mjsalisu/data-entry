@@ -189,6 +189,7 @@ function updateControlsVisibility() {
 
     const uploadBtn = document.getElementById('uploadAllBtn');
     const retryBtn = document.getElementById('retryAllBtn');
+    const verifySection = document.getElementById('verifySection');
     const cleanupSection = document.getElementById('cleanupSection');
 
     // Upload button
@@ -205,6 +206,11 @@ function updateControlsVisibility() {
     // Retry button
     if (retryBtn) {
         retryBtn.style.display = counts.failed > 0 ? 'block' : 'none';
+    }
+
+    // Verify section (show when there are uploaded/confirmed entries)
+    if (verifySection) {
+        verifySection.style.display = counts.confirmed > 0 ? 'block' : 'none';
     }
 
     // Cleanup section
@@ -318,8 +324,8 @@ async function handleClearConfirmed() {
     if (total === 0) return;
 
     const confirmed = await showModal(
-        'Clear Confirmed Entries',
-        'Are you sure you want to permanently remove ' + total + ' confirmed entries from local storage?\n\nThis data is already in Google Sheets and cannot be recovered locally.'
+        'Clear Uploaded Entries',
+        'Are you sure you want to permanently remove ' + total + ' uploaded entries from this device?\n\nRun "Verify Uploads" first if you want to confirm they\'re in Google Sheets.'
     );
 
     if (confirmed) {
@@ -330,8 +336,104 @@ async function handleClearConfirmed() {
     }
 }
 
-// ─────────────────────────────────────────────
-// Filter
+/**
+ * Verify all confirmed/uploaded entries against the Google Sheet.
+ * Checks each UUID via GET request and shows found/not-found results.
+ */
+async function handleVerifyAll() {
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resultsEl = document.getElementById('verifyResults');
+
+    if (!navigator.onLine) {
+        showNotification('❌ You are offline. Connect to the internet to verify.');
+        return;
+    }
+
+    // Get all entries that should be in the sheet
+    const entries = _allEntries.filter(e => e.status === 'confirmed' || e.status === 'uploaded');
+    if (entries.length === 0) {
+        showNotification('No uploaded entries to verify.');
+        return;
+    }
+
+    // Update button state
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = '🔍 Verifying... 0/' + entries.length;
+    resultsEl.style.display = 'block';
+    resultsEl.innerHTML = '<p style="color:#8899bb;font-size:0.85rem;text-align:center;">Checking entries against Google Sheets...</p>';
+
+    let found = 0;
+    let notFound = 0;
+    let errors = 0;
+    const results = [];
+
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        verifyBtn.textContent = '🔍 Verifying... ' + (i + 1) + '/' + entries.length;
+
+        try {
+            const resp = await fetch(SCRIPT_URL + '?action=verify&uuid=' + encodeURIComponent(entry.uuid));
+            const data = await resp.json();
+
+            if (data.found) {
+                found++;
+                results.push({ name: entry.payload.name || 'Unknown', status: 'found', id: entry.id });
+                // Update status to confirmed if it was just 'uploaded'
+                if (entry.status === 'uploaded') {
+                    await updateSubmissionStatus(entry.id, 'confirmed', null);
+                }
+            } else {
+                notFound++;
+                results.push({ name: entry.payload.name || 'Unknown', status: 'not_found', id: entry.id });
+            }
+        } catch (err) {
+            errors++;
+            results.push({ name: entry.payload.name || 'Unknown', status: 'error', id: entry.id });
+        }
+
+        // Small delay between checks to avoid rate limiting
+        if (i < entries.length - 1) {
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+
+    // Build results HTML
+    let html = '<div class="verify-results-card">';
+    html += '<div class="verify-summary">';
+    html += '<span class="verify-stat found">✅ ' + found + ' Found</span>';
+    if (notFound > 0) html += '<span class="verify-stat not-found">❌ ' + notFound + ' Not Found</span>';
+    if (errors > 0) html += '<span class="verify-stat error">⚠️ ' + errors + ' Error</span>';
+    html += '</div>';
+
+    // Individual results
+    html += '<div class="verify-list">';
+    results.forEach(r => {
+        const icon = r.status === 'found' ? '✅' : r.status === 'not_found' ? '❌' : '⚠️';
+        const label = r.status === 'found' ? 'In Sheet' : r.status === 'not_found' ? 'Not in Sheet' : 'Check failed';
+        const cls = r.status === 'found' ? 'found' : 'not-found';
+        html += '<div class="verify-item ' + cls + '">';
+        html += '<span>' + icon + ' ' + escapeHtml(r.name) + '</span>';
+        html += '<span class="verify-label">' + label + '</span>';
+        html += '</div>';
+    });
+    html += '</div></div>';
+
+    resultsEl.innerHTML = html;
+
+    // Reset button
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = '🔍 Verify Uploads';
+
+    // Refresh list to reflect any status changes
+    await refreshList();
+
+    // Show summary notification
+    if (notFound === 0 && errors === 0) {
+        showNotification('✅ All ' + found + ' entries verified in Google Sheets!');
+    } else if (notFound > 0) {
+        showNotification('⚠️ ' + found + ' found, ' + notFound + ' not found in sheet. These may need re-uploading.');
+    }
+}
 // ─────────────────────────────────────────────
 
 function filterList(filter, tabEl) {

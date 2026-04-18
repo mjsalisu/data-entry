@@ -394,6 +394,91 @@
 }
 .btn-back-form:hover { background: rgba(100, 181, 246, 0.25); color: #90caf9; }
 
+/* ── Verify Section ── */
+.verify-section {
+  padding: 16px 16px 0;
+  text-align: center;
+}
+.btn-verify {
+  width: 100%;
+  padding: 12px 24px;
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+  border-radius: 10px;
+  color: #69f0ae;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-verify:hover {
+  background: rgba(76, 175, 80, 0.22);
+  border-color: rgba(76, 175, 80, 0.4);
+}
+.btn-verify:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.verify-note {
+  font-size: 0.75rem;
+  color: #5566aa;
+  margin-top: 6px;
+}
+.verify-results-card {
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  text-align: left;
+}
+.verify-summary {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.verify-stat {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.verify-stat.found { color: #69f0ae; }
+.verify-stat.not-found { color: #ef5350; }
+.verify-stat.error { color: #ffa726; }
+.verify-list {
+  max-height: 240px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.verify-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.82rem;
+}
+.verify-item:last-child { border-bottom: none; }
+.verify-item.found { color: #b2dfdb; }
+.verify-item.not-found { color: #ffcdd2; }
+.verify-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.verify-item.found .verify-label {
+  background: rgba(105, 240, 174, 0.1);
+  color: #69f0ae;
+}
+.verify-item.not-found .verify-label {
+  background: rgba(239, 83, 80, 0.1);
+  color: #ef5350;
+}
+
 /* ── Cleanup Section ── */
 .cleanup-section {
   padding: 20px 16px;

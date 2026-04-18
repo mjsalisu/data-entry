@@ -113,12 +113,23 @@
       </div>
     </div>
 
+    <!-- Verify & Cleanup Section -->
+    <div class="verify-section" id="verifySection" style="display:none;">
+      <button id="verifyBtn" class="btn-verify" onclick="handleVerifyAll()">
+        🔍 Verify Uploads
+      </button>
+      <p class="verify-note">Check which entries actually landed in Google Sheets</p>
+
+      <!-- Verification Results (shown after verify runs) -->
+      <div id="verifyResults" style="display:none;"></div>
+    </div>
+
     <!-- Cleanup Section -->
     <div class="cleanup-section" id="cleanupSection" style="display:none;">
       <button id="clearConfirmedBtn" class="btn-clear-confirmed" onclick="handleClearConfirmed()">
-        🗑️ Clear Confirmed Entries
+        🗑️ Clear Uploaded Entries
       </button>
-      <p class="cleanup-note">Only removes entries that have been verified by the server.</p>
+      <p class="cleanup-note">Removes entries from your device. Run "Verify Uploads" first if you want to double-check.</p>
     </div>
 
   </main>

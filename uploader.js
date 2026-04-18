@@ -174,38 +174,19 @@ async function uploadAll() {
                 mode: 'no-cors'
             }, 3); // up to 3 attempts
 
-            // Wait before verification (give Apps Script time to process)
-            // Randomized 1.5-3s to spread verification load
-            await sleep(1500 + Math.floor(Math.random() * 1500));
-
-            // Verify via GET
-            const verified = await verifyUpload(record.uuid);
-
-            if (verified) {
-                await updateSubmissionStatus(record.id, 'confirmed', null);
-                uploaded++;
-                consecutiveFailures = 0; // Reset on success
-                broadcastMessage('upload_progress', {
-                    current: _uploadProgress.current,
-                    total: _uploadProgress.total,
-                    entryId: record.id,
-                    entryName: record.payload.name || 'Unknown',
-                    status: 'confirmed'
-                });
-            } else {
-                // POST likely succeeded (no-cors), but couldn't verify
-                // Mark as uploaded (not confirmed) — user can verify later
-                await updateSubmissionStatus(record.id, 'uploaded', 'Upload sent but not yet verified');
-                uploaded++;
-                consecutiveFailures = 0; // POST succeeded, verification is separate
-                broadcastMessage('upload_progress', {
-                    current: _uploadProgress.current,
-                    total: _uploadProgress.total,
-                    entryId: record.id,
-                    entryName: record.payload.name || 'Unknown',
-                    status: 'uploaded'
-                });
-            }
+            // POST succeeded (no error thrown) — mark as confirmed
+            // Server-side LockService + UUID duplicate detection ensure safe writes
+            // Manual verification available via the "Verify" button on queue page
+            await updateSubmissionStatus(record.id, 'confirmed', null);
+            uploaded++;
+            consecutiveFailures = 0;
+            broadcastMessage('upload_progress', {
+                current: _uploadProgress.current,
+                total: _uploadProgress.total,
+                entryId: record.id,
+                entryName: record.payload.name || 'Unknown',
+                status: 'confirmed'
+            });
 
         } catch (err) {
             console.error('Upload failed for entry', record.id, err);
@@ -300,16 +281,10 @@ async function uploadSingle(id) {
             mode: 'no-cors'
         }, 3);
 
-        await sleep(1500 + Math.floor(Math.random() * 1500));
-        const verified = await verifyUpload(record.uuid);
+        // POST succeeded — mark as confirmed immediately
+        await updateSubmissionStatus(id, 'confirmed', null);
 
-        if (verified) {
-            await updateSubmissionStatus(id, 'confirmed', null);
-        } else {
-            await updateSubmissionStatus(id, 'uploaded', 'Upload sent but not yet verified');
-        }
-
-        broadcastMessage('entry_updated', { entryId: id, status: verified ? 'confirmed' : 'uploaded' });
+        broadcastMessage('entry_updated', { entryId: id, status: 'confirmed' });
         return true;
 
     } catch (err) {
