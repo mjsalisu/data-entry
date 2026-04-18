@@ -458,51 +458,134 @@ async function showDetail(id) {
     const body = document.getElementById('detailBody');
     const actions = document.getElementById('detailActions');
     const title = document.getElementById('detailTitle');
+    const p = entry.payload;
 
-    title.textContent = entry.payload.name || 'Entry Details';
+    title.textContent = p.name || 'Entry Details';
 
-    // Build fields
-    const fields = [
-        { label: 'Status', value: getStatusLabel(entry.status) },
-        { label: 'UUID', value: entry.uuid },
-        { label: 'Saved At', value: formatDateTime(entry.createdAt) },
-        { label: 'State', value: entry.payload.state || 'N/A' },
-        { label: 'Certificate ID', value: entry.payload.certificate_id || 'N/A' },
-        { label: 'Email', value: entry.payload.email || 'N/A' },
-        { label: 'Phone', value: entry.payload.phone || 'N/A' },
-        { label: 'Training Details', value: entry.payload.training_details || 'N/A' },
-        { label: 'Post-Test Score', value: entry.payload.post_test_score || 'N/A' }
-    ];
+    // Helper: render a section with a heading and key-value fields
+    function renderSection(heading, fields) {
+        // Filter out empty values
+        const filled = fields.filter(f => f.value && f.value !== 'N/A' && f.value.toString().trim() !== '');
+        if (filled.length === 0) return '';
 
-    if (entry.uploadedAt) {
-        fields.push({ label: 'Uploaded At', value: formatDateTime(entry.uploadedAt) });
-    }
-    if (entry.error) {
-        fields.push({ label: 'Error', value: entry.error });
+        let html = '<div class="detail-section">';
+        html += '<div class="detail-section-heading">' + escapeHtml(heading) + '</div>';
+        filled.forEach(f => {
+            html += '<div class="detail-field">' +
+                '<div class="detail-field-label">' + escapeHtml(f.label) + '</div>' +
+                '<div class="detail-field-value">' + escapeHtml(f.value.toString()) + '</div>' +
+                '</div>';
+        });
+        html += '</div>';
+        return html;
     }
 
     let html = '';
-    fields.forEach(f => {
-        html += '<div class="detail-field">' +
-            '<div class="detail-field-label">' + escapeHtml(f.label) + '</div>' +
-            '<div class="detail-field-value">' + escapeHtml(f.value) + '</div>' +
-            '</div>';
-    });
 
-    // Image previews (create from Blobs)
-    if (entry.pretestBlob) {
-        const preUrl = URL.createObjectURL(entry.pretestBlob);
-        html += '<div class="detail-field">' +
-            '<div class="detail-field-label">PreTest Snapshot</div>' +
-            '<img class="detail-image" src="' + preUrl + '" alt="PreTest">' +
-            '</div>';
-    }
-    if (entry.posttestBlob) {
-        const postUrl = URL.createObjectURL(entry.posttestBlob);
-        html += '<div class="detail-field">' +
-            '<div class="detail-field-label">PostTest Snapshot</div>' +
-            '<img class="detail-image" src="' + postUrl + '" alt="PostTest">' +
-            '</div>';
+    // ── System Info ──
+    html += renderSection('System', [
+        { label: 'Status', value: getStatusLabel(entry.status) },
+        { label: 'UUID', value: entry.uuid },
+        { label: 'Saved At', value: formatDateTime(entry.createdAt) },
+        { label: 'Uploaded At', value: entry.uploadedAt ? formatDateTime(entry.uploadedAt) : '' },
+        { label: 'Error', value: entry.error || '' }
+    ]);
+
+    // ── Consent & Metadata ──
+    html += renderSection('Consent & Metadata', [
+        { label: 'Participant Consent', value: p.consent },
+        { label: 'Certificate ID', value: p.certificate_id },
+        { label: 'Post-Test Score', value: p.post_test_score },
+        { label: 'Inputted By', value: p.inputted_by },
+        { label: 'Jobberman SST Certificate', value: p.jobberman_sst }
+    ]);
+
+    // ── Learner's Biodata ──
+    html += renderSection('Learner\'s Biodata', [
+        { label: 'Full Name', value: p.name },
+        { label: 'Email', value: p.email },
+        { label: 'Phone', value: p.phone },
+        { label: 'Phone Type', value: p.phone_type },
+        { label: 'Alternative Phone', value: p.alt_phone },
+        { label: 'Home Address', value: p.address },
+        { label: 'Gender', value: p.gender },
+        { label: 'Date of Birth', value: p.dob }
+    ]);
+
+    // ── Education & Employment ──
+    html += renderSection('Education & Employment', [
+        { label: 'Highest Qualification', value: p.qualification },
+        { label: 'Current Level', value: p.current_level },
+        { label: 'Employment Status', value: p.employment_status },
+        { label: 'Current Occupation', value: p.current_occupation },
+        { label: 'Preferred Industry', value: p.preferred_industry },
+        { label: 'Preferred Job Role', value: p.preferred_job_role },
+        { label: 'Top Skills', value: p.top_skills },
+        { label: 'Income Range', value: p.income_range }
+    ]);
+
+    // ── Demographics & Background ──
+    html += renderSection('Demographics', [
+        { label: 'State', value: p.state },
+        { label: 'Training Details', value: p.training_details },
+        { label: 'Settlement', value: p.settlement },
+        { label: 'Internally Displaced?', value: p.idp },
+        { label: 'Disability', value: p.disability },
+        { label: 'Disability Type', value: p.disability_type }
+    ]);
+
+    // ── Business & Tech Access ──
+    html += renderSection('Business & Tech', [
+        { label: 'Existing Business', value: p.existing_business },
+        { label: 'Business Nature', value: p.business_nature },
+        { label: 'Formal Training', value: p.formal_training },
+        { label: 'Tech Access', value: p.tech_access },
+        { label: 'Internet Access', value: p.internet_access },
+        { label: 'Preferred Language', value: p.preferred_language }
+    ]);
+
+    // ── Training & Job Search ──
+    html += renderSection('Training & Job Search', [
+        { label: 'Previous Soft Skills Training', value: p.prev_soft_skills },
+        { label: 'Training Reason', value: p.training_reason },
+        { label: 'Confidence Level', value: p.confidence_level },
+        { label: 'Job Search Duration', value: p.job_search_duration },
+        { label: 'Biggest Challenge', value: p.job_search_challenge },
+        { label: 'Desired Outcome', value: p.desired_outcome },
+        { label: 'Has CV/Resume', value: p.has_cv }
+    ]);
+
+    // ── Feedback ──
+    html += renderSection('Feedback', [
+        { label: 'Hall Rating', value: p.hall_rating },
+        { label: 'Facilities Adequate', value: p.facilities_adequate },
+        { label: 'Refreshment - Biscuit', value: p.ref_biscuit },
+        { label: 'Refreshment - Drink', value: p.ref_drink },
+        { label: 'Refreshment - Water', value: p.ref_water },
+        { label: 'Refreshment Satisfaction', value: p.refreshment_satisfaction },
+        { label: 'Refreshments Enhanced Training', value: p.refreshment_enhanced },
+        { label: 'Facilitator Rating', value: p.facilitator_rating }
+    ]);
+
+    // ── Image Previews ──
+    if (entry.pretestBlob || entry.posttestBlob) {
+        html += '<div class="detail-section">';
+        html += '<div class="detail-section-heading">Snapshots</div>';
+        if (entry.pretestBlob) {
+            const preUrl = URL.createObjectURL(entry.pretestBlob);
+            html += '<div class="detail-field">' +
+                '<div class="detail-field-label">PreTest Snapshot</div>' +
+                '<img class="detail-image" src="' + preUrl + '" alt="PreTest">' +
+                '</div>';
+        }
+        if (entry.posttestBlob) {
+            const postUrl = URL.createObjectURL(entry.posttestBlob);
+            html += '<div class="detail-field">' +
+                '<div class="detail-field-label">PostTest Snapshot</div>' +
+                '<img class="detail-image" src="' + postUrl + '" alt="PostTest">' +
+                '</div>';
+        }
+        html += '</div>';
     }
 
     body.innerHTML = html;

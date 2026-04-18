@@ -622,6 +622,19 @@
 .detail-body {
   padding: 16px 20px;
 }
+.detail-section {
+  margin-bottom: 16px;
+}
+.detail-section-heading {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #64b5f6;
+  font-weight: 700;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(100, 181, 246, 0.15);
+}
 .detail-field {
   margin-bottom: 10px;
 }
