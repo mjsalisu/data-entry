@@ -106,6 +106,7 @@ const REFRESHMENTS = {
             "Grand Malt",
             "Hi Malt",
             "Beta Malt",
+            "Dubic Malt",
             "Not Provided",
             "Unticked (left blank)"
         ]
