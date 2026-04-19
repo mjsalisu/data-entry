@@ -250,6 +250,19 @@ async function uploadAll() {
     };
 
     broadcastMessage('upload_complete', result);
+
+    // ── Re-check: were new entries saved while we were uploading? ──
+    // If yes, start another upload cycle automatically
+    if (navigator.onLine) {
+        const remaining = await getPendingCount();
+        if (remaining > 0) {
+            console.log('[Upload] ' + remaining + ' new entries found after upload — starting another cycle');
+            // Small delay to let the UI update
+            await sleep(1000);
+            return uploadAll();
+        }
+    }
+
     return result;
 }
 
@@ -387,7 +400,26 @@ function enableAutoSync() {
 
 // Auto-enable on load
 if (typeof window !== 'undefined') {
-    enableAutoSync();
+    // Reset any entries stuck in 'uploading' from interrupted uploads
+    resetStuckUploading().then(count => {
+        if (count > 0) {
+            console.log('[AutoSync] Reset ' + count + ' stuck entries');
+        }
+        // Then enable auto-sync listener
+        enableAutoSync();
+
+        // Also auto-upload on page load if there are pending entries
+        if (navigator.onLine) {
+            getPendingCount().then(pending => {
+                if (pending > 0 && !_uploading) {
+                    console.log('[AutoSync] Found ' + pending + ' pending entries on load — starting upload');
+                    uploadAll();
+                }
+            }).catch(() => { /* ignore */ });
+        }
+    }).catch(() => {
+        enableAutoSync();
+    });
 }
 
 // ─────────────────────────────────────────────

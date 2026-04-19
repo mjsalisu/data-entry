@@ -1069,6 +1069,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Broadcast to queue page that a new entry was saved
                 broadcastMessage('entry_saved', { id: result.id, uuid: result.uuid });
 
+                // ── Auto-upload if online ──
+                // If the user has internet, start background upload immediately
+                // No need to visit the queue page — it just happens
+                if (navigator.onLine && typeof uploadAll === 'function' && !isUploading()) {
+                    console.log('[AutoSync] Entry saved while online — starting background upload');
+                    uploadAll(); // runs async, doesn't block the UI
+                }
+
                 // Re-trigger the SVG animation by cloning and replacing the SVG
                 const svg = successScreen.querySelector('.success-checkmark svg');
                 if (svg) {
@@ -1127,10 +1135,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Update Queue Badge on page load ──
     updateQueueBadge();
 
-    // ── Listen for broadcast messages (from queue page uploads) ──
+    // ── Listen for broadcast messages (from uploads on any page) ──
     onBroadcastMessage((msg) => {
-        if (msg.type === 'upload_complete' || msg.type === 'entry_updated') {
-            updateQueueBadge();
+        switch (msg.type) {
+            case 'auto_sync_started':
+                showSyncToast('⬆️ Uploading ' + msg.count + ' entries...', 'uploading');
+                break;
+            case 'upload_started':
+                showSyncToast('⬆️ Uploading ' + msg.total + ' entries...', 'uploading');
+                break;
+            case 'upload_progress':
+                updateQueueBadge();
+                if (msg.status === 'confirmed') {
+                    showSyncToast('✅ ' + msg.current + '/' + msg.total + ' uploaded', 'progress');
+                }
+                break;
+            case 'upload_waiting':
+                showSyncToast('🕒 Server busy — retrying in ' + msg.waitSeconds + 's...', 'waiting');
+                break;
+            case 'upload_complete':
+                updateQueueBadge();
+                if (msg.uploaded > 0 && msg.failed === 0) {
+                    showSyncToast('✅ All ' + msg.uploaded + ' entries uploaded!', 'done');
+                } else if (msg.uploaded > 0 && msg.failed > 0) {
+                    showSyncToast('⚠️ ' + msg.uploaded + ' uploaded, ' + msg.failed + ' failed', 'warning');
+                }
+                break;
+            case 'entry_updated':
+            case 'entry_saved':
+                updateQueueBadge();
+                break;
         }
     });
 });
@@ -1153,4 +1187,56 @@ async function updateQueueBadge() {
     } catch (e) {
         // IndexedDB not ready yet — ignore
     }
+}
+
+// ─────────────────────────────────────────────
+// Sync Toast (non-intrusive upload status)
+// ─────────────────────────────────────────────
+
+let _syncToastTimeout = null;
+
+/**
+ * Show a small, non-intrusive toast above the bottom tab bar
+ * to indicate background upload activity.
+ *
+ * @param {string} text - Message to display
+ * @param {string} type - 'uploading' | 'progress' | 'done' | 'warning' | 'waiting'
+ */
+function showSyncToast(text, type) {
+    let toast = document.getElementById('syncToast');
+
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'syncToast';
+        toast.style.cssText =
+            'position:fixed;bottom:68px;left:50%;transform:translateX(-50%);' +
+            'padding:8px 18px;border-radius:20px;font-size:0.8rem;font-weight:600;' +
+            'z-index:1050;pointer-events:none;transition:all 0.3s ease;' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.15);white-space:nowrap;max-width:90%;' +
+            'text-overflow:ellipsis;overflow:hidden;';
+        document.body.appendChild(toast);
+    }
+
+    // Style by type
+    const styles = {
+        uploading: 'background:#1565c0;color:#fff;',
+        progress:  'background:#1565c0;color:#fff;',
+        done:      'background:#2e7d32;color:#fff;',
+        warning:   'background:#e65100;color:#fff;',
+        waiting:   'background:#f57c00;color:#fff;'
+    };
+    toast.style.cssText = toast.style.cssText.replace(/background:[^;]+;color:[^;]+;/g, '');
+    toast.style.cssText += styles[type] || styles.uploading;
+
+    toast.textContent = text;
+    toast.style.opacity = '1';
+
+    // Clear previous auto-hide timer
+    if (_syncToastTimeout) clearTimeout(_syncToastTimeout);
+
+    // Auto-hide after delay (longer for final states)
+    const delay = (type === 'done' || type === 'warning') ? 5000 : 3000;
+    _syncToastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+    }, delay);
 }

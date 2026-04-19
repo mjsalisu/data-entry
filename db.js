@@ -125,12 +125,13 @@ async function saveSubmission(payload, images) {
 
 /**
  * Get all submissions with status "pending" or "failed".
+ * Also picks up entries stuck in "uploading" (interrupted by navigation).
  * @returns {Promise<Array>}
  */
 async function getPendingSubmissions() {
     const db = await openDB();
     const all = await db.getAllFromIndex(STORE_NAME, 'status');
-    return all.filter(r => r.status === 'pending' || r.status === 'failed');
+    return all.filter(r => r.status === 'pending' || r.status === 'failed' || r.status === 'uploading');
 }
 
 /**
@@ -185,19 +186,19 @@ async function deleteSubmission(id) {
 }
 
 /**
- * Delete all submissions with status "confirmed".
+ * Delete all submissions with status "confirmed" or "uploaded".
  * @returns {Promise<number>} Number of entries cleared
  */
 async function clearConfirmed() {
     const db = await openDB();
     const all = await db.getAll(STORE_NAME);
-    const confirmed = all.filter(r => r.status === 'confirmed');
+    const toClear = all.filter(r => r.status === 'confirmed' || r.status === 'uploaded');
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    for (const record of confirmed) {
+    for (const record of toClear) {
         tx.store.delete(record.id);
     }
     await tx.done;
-    return confirmed.length;
+    return toClear.length;
 }
 
 /**
@@ -275,4 +276,27 @@ async function retryAllFailed() {
     }
     await tx.done;
     return failed.length;
+}
+
+/**
+ * Reset any entries stuck in "uploading" status back to "pending".
+ * This happens when a page is navigated away during an upload.
+ * Should be called on page load.
+ * @returns {Promise<number>} Number of entries reset
+ */
+async function resetStuckUploading() {
+    const db = await openDB();
+    const all = await db.getAll(STORE_NAME);
+    const stuck = all.filter(r => r.status === 'uploading');
+    if (stuck.length === 0) return 0;
+
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    for (const record of stuck) {
+        record.status = 'pending';
+        record.error = null;
+        tx.store.put(record);
+    }
+    await tx.done;
+    console.log('[DB] Reset ' + stuck.length + ' stuck uploading entries to pending');
+    return stuck.length;
 }
