@@ -62,10 +62,12 @@ const REFRESHMENTS = {
     },
     "Ogun": {
         biscuit: [
+            "Yale Digestive Gold(2 * 100g)",
+            "Sesamix Biscuit(2 * 100g)",
+            "Nasco Biscuit(100g)",
+            "Fab Biscuit(100g)",
             "McVites Hobonbs 78g",
             "McVites Digestive78g",
-            "Nasco Biscuit (100g)",
-            "Fab Biscuit (100g)",
             "Not Provided",
             "Unticked (left blank)"
         ],
