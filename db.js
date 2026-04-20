@@ -49,16 +49,9 @@ async function openDB() {
  * @returns {Blob}
  */
 function dataUrlToBlob(dataUrl) {
-    if (!dataUrl || !dataUrl.startsWith('data:')) return null;
-    const parts = dataUrl.split(',');
-    const mime = parts[0].match(/:(.*?);/)[1];
-    const byteString = atob(parts[1]);
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-    }
-    return new Blob([ab], { type: mime });
+    // Avoid storing Blobs on iOS to prevent IndexedDB object store errors.
+    // Instead, just return the dataUrl string directly.
+    return dataUrl || null;
 }
 
 /**
@@ -69,6 +62,7 @@ function dataUrlToBlob(dataUrl) {
 function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
         if (!blob) { resolve(''); return; }
+        if (typeof blob === 'string') { resolve(blob); return; } // Fast path for stored strings
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = reject;

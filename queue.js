@@ -572,14 +572,14 @@ async function showDetail(id) {
         html += '<div class="detail-section">';
         html += '<div class="detail-section-heading">Snapshots</div>';
         if (entry.pretestBlob) {
-            const preUrl = URL.createObjectURL(entry.pretestBlob);
+            const preUrl = typeof entry.pretestBlob === 'string' ? entry.pretestBlob : URL.createObjectURL(entry.pretestBlob);
             html += '<div class="detail-field">' +
                 '<div class="detail-field-label">PreTest Snapshot</div>' +
                 '<img class="detail-image" src="' + preUrl + '" alt="PreTest">' +
                 '</div>';
         }
         if (entry.posttestBlob) {
-            const postUrl = URL.createObjectURL(entry.posttestBlob);
+            const postUrl = typeof entry.posttestBlob === 'string' ? entry.posttestBlob : URL.createObjectURL(entry.posttestBlob);
             html += '<div class="detail-field">' +
                 '<div class="detail-field-label">PostTest Snapshot</div>' +
                 '<img class="detail-image" src="' + postUrl + '" alt="PostTest">' +
