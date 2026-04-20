@@ -22,6 +22,7 @@ let _uploading = false;
 let _paused = false;
 let _currentUploadId = null;
 let _uploadProgress = { current: 0, total: 0 };
+let _wakeLock = null; // Screen wake lock instance
 
 // BroadcastChannel for cross-page communication (form page ↔ queue page)
 let _channel = null;
@@ -88,6 +89,17 @@ async function uploadAll() {
 
     _uploading = true;
     _paused = false;
+
+    // ── Screen Wake Lock ──
+    // Prevent iOS/Android from sleeping the screen while uploading
+    try {
+        if ('wakeLock' in navigator) {
+            _wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock active: Screen will stay on.');
+        }
+    } catch (err) {
+        console.warn(`Wake Lock failed: ${err.message}`);
+    }
 
     const pending = await getPendingSubmissions();
     if (pending.length === 0) {
@@ -192,44 +204,20 @@ async function uploadAll() {
             console.error('Upload failed for entry', record.id, err);
             consecutiveFailures++;
 
-            // ── Smart waiting instead of immediate failure ──
-            // If this is a server overload, wait and auto-retry (up to 3 times per entry)
-            if (consecutiveFailures <= 3 && !_paused) {
-                const waitTime = Math.min(5000 * Math.pow(2, consecutiveFailures - 1), 30000);
-                const waitJitter = Math.floor(Math.random() * 3000);
-                const totalWait = waitTime + waitJitter;
+            // Exhausted retries (fetchWithRetry already does 3 attempts internally)
+            const detailedError = getUserFriendlyError(err);
 
-                // Mark as "waiting" not "failed" — it will auto-retry
-                await updateSubmissionStatus(record.id, 'pending',
-                    'Server busy \u2014 auto-retrying in ' + Math.round(totalWait / 1000) + 's');
-
-                broadcastMessage('upload_progress', {
-                    current: _uploadProgress.current,
-                    total: _uploadProgress.total,
-                    entryId: record.id,
-                    entryName: record.payload.name || 'Unknown',
-                    status: 'waiting',
-                    waitSeconds: Math.round(totalWait / 1000),
-                    error: 'Server busy \u2014 auto-retrying...'
-                });
-
-                // Countdown wait — broadcast updates every second
-                await broadcastCountdown(totalWait, 'Server busy. Waiting to retry...');
-
-            } else {
-                // Exhausted retries — mark as truly failed
-                await updateSubmissionStatus(record.id, 'failed',
-                    err.message || 'Network error \u2014 tap Retry to try again');
-                failed++;
-                broadcastMessage('upload_progress', {
-                    current: _uploadProgress.current,
-                    total: _uploadProgress.total,
-                    entryId: record.id,
-                    entryName: record.payload.name || 'Unknown',
-                    status: 'failed',
-                    error: err.message || 'Upload failed after multiple retries'
-                });
-            }
+            // Mark as truly failed with the detailed error so the user can read it.
+            await updateSubmissionStatus(record.id, 'failed', detailedError);
+            failed++;
+            broadcastMessage('upload_progress', {
+                current: _uploadProgress.current,
+                total: _uploadProgress.total,
+                entryId: record.id,
+                entryName: record.payload.name || 'Unknown',
+                status: 'failed',
+                error: detailedError
+            });
         }
 
         // ── Randomized inter-upload delay (2-5s) ──
@@ -254,13 +242,27 @@ async function uploadAll() {
     // ── Re-check: were new entries saved while we were uploading? ──
     // If yes, start another upload cycle automatically
     if (navigator.onLine) {
-        const remaining = await getPendingCount();
-        if (remaining > 0) {
-            console.log('[Upload] ' + remaining + ' new entries found after upload — starting another cycle');
+        // We only want to auto-restart if there are strictly 'pending' items, not 'failed' ones.
+        const pendingItems = await getPendingSubmissions();
+        const strictlyPendingCount = pendingItems.filter(r => r.status === 'pending').length;
+        if (strictlyPendingCount > 0) {
+            console.log('[Upload] ' + strictlyPendingCount + ' new pending entries found after upload — starting another cycle');
             // Small delay to let the UI update
             await sleep(1000);
+            
+            // Release lock before recursion (new call will request it again)
+            if (_wakeLock !== null) { try { _wakeLock.release(); _wakeLock = null; } catch(e){} }
             return uploadAll();
         }
+    }
+
+    // ── Release Wake Lock ──
+    if (_wakeLock !== null) {
+        try {
+            _wakeLock.release();
+            _wakeLock = null;
+            console.log('Wake Lock released.');
+        } catch (e) {}
     }
 
     return result;
@@ -301,8 +303,9 @@ async function uploadSingle(id) {
         return true;
 
     } catch (err) {
-        await updateSubmissionStatus(id, 'failed', err.message || 'Network error');
-        broadcastMessage('entry_updated', { entryId: id, status: 'failed', error: err.message });
+        const detailedError = getUserFriendlyError(err);
+        await updateSubmissionStatus(id, 'failed', detailedError);
+        broadcastMessage('entry_updated', { entryId: id, status: 'failed', error: detailedError });
         return false;
     }
 }
@@ -422,6 +425,21 @@ if (typeof window !== 'undefined') {
     });
 }
 
+// ── Background & Visibility Watcher ──
+// Auto-reacquire Wake Lock if they come back from another tab mid-upload
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && _uploading && !_paused) {
+        try {
+            if ('wakeLock' in navigator && _wakeLock === null) {
+                _wakeLock = await navigator.wakeLock.request('screen');
+            }
+        } catch (err) {}
+    } else if (document.visibilityState === 'hidden' && _uploading) {
+        // iOS freezes JS here. Show a toast if we had a way, or just accept the pause.
+        console.warn('App went to background! Uploads may be suspended by iOS.');
+    }
+});
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -488,4 +506,28 @@ async function broadcastCountdown(totalMs, reason) {
         });
         await sleep(1000);
     }
+}
+
+/**
+ * Evaluates the catch block error and returns a friendly actionable message.
+ * Since we use no-cors, fetch errors are mostly restricted to standard JS network/DOMExceptions.
+ *
+ * @param {Error|String} err
+ * @returns {string} Highly visible actionable error string
+ */
+function getUserFriendlyError(err) {
+    const errMsg = (err.message || err || 'Network error').toString();
+    const lowerMsg = errMsg.toLowerCase();
+    
+    let fixPhrase = "Tap 'Retry' later.";
+    
+    if (lowerMsg.includes('network') || lowerMsg.includes('fetch') || lowerMsg.includes('load failed') || lowerMsg.includes('offline') || lowerMsg.includes('internet')) {
+        fixPhrase = "Connect to better WiFi/Cellular data and tap Retry.";
+    } else if (lowerMsg.includes('timeout')) {
+        fixPhrase = "Server is lagging. Wait a few mins, change network, and Retry.";
+    } else if (lowerMsg.includes('too large') || lowerMsg.includes('quota')) {
+        fixPhrase = "File might be too large or quota hit. Clear cache and restart.";
+    }
+
+    return errMsg + " (Fix: " + fixPhrase + ")";
 }
