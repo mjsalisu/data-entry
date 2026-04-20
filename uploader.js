@@ -37,20 +37,28 @@ try {
 // BroadcastChannel Messaging
 // ─────────────────────────────────────────────
 
+let _broadcastCallbacks = [];
+
 /**
- * Broadcast a message to all open tabs/pages.
+ * Broadcast a message to all open tabs/pages AND the local UI.
  * @param {string} type - Message type
  * @param {Object} data - Message payload
  */
 function broadcastMessage(type, data) {
     const msg = { type, ...data, timestamp: Date.now() };
 
+    // Fire to other tabs
     if (_channel) {
         _channel.postMessage(msg);
     } else {
         // Fallback: use localStorage event (triggers in OTHER tabs)
         localStorage.setItem('dataentry_broadcast', JSON.stringify(msg));
         localStorage.removeItem('dataentry_broadcast');
+    }
+
+    // Fire to the current tab as well (BroadcastChannel does not self-echo)
+    for (const callback of _broadcastCallbacks) {
+        try { callback(msg); } catch (e) { console.error('Broadcast callback error:', e); }
     }
 }
 
@@ -59,6 +67,9 @@ function broadcastMessage(type, data) {
  * @param {function(Object)} callback
  */
 function onBroadcastMessage(callback) {
+    // Register local callback
+    _broadcastCallbacks.push(callback);
+
     if (_channel) {
         _channel.addEventListener('message', (e) => callback(e.data));
     } else {
@@ -111,10 +122,10 @@ async function uploadAll() {
     _uploadProgress = { current: 0, total: pending.length };
     broadcastMessage('upload_started', { total: pending.length });
 
-    // ── Initial jitter: random 0-10s delay ──
-    // Prevents 200 devices from all hitting the server at t=0
-    const initialDelay = Math.floor(Math.random() * 10000);
-    console.log(`Starting uploads in ${(initialDelay / 1000).toFixed(1)}s (jitter)...`);
+    // ── Initial jitter: short 500ms delay ──
+    // Makes the progress UI feel natural and prevents instantaneous lockups
+    const initialDelay = 500;
+    console.log(`Starting uploads in ${(initialDelay / 1000).toFixed(1)}s...`);
     broadcastMessage('upload_progress', {
         current: 0,
         total: pending.length,

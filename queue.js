@@ -739,8 +739,11 @@ function updateProgress(msg) {
         if (current) current.textContent = '⏳ Waiting ' + (msg.waitSeconds || '') + 's before retry...';
     } else {
         if (text) text.textContent = 'Uploading...';
-        if (count) count.textContent = msg.current + '/' + msg.total;
-        if (fill) fill.style.width = Math.round((msg.current / msg.total) * 100) + '%';
+        
+        const pct = msg.total > 0 ? Math.round((msg.current / msg.total) * 100) : 0;
+        
+        if (count) count.textContent = msg.current + '/' + msg.total + ' (' + pct + '%)';
+        if (fill) fill.style.width = pct + '%';
         if (current) {
             const icon = msg.status === 'confirmed' ? '✅' : msg.status === 'failed' ? '❌' : '⬆️';
             current.textContent = icon + ' ' + (msg.entryName || 'Entry');
