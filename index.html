@@ -794,8 +794,9 @@
 
     /**
      * Handle a pending SW update.
-     * If no pending uploads → auto-apply.
-     * If pending uploads → show banner, wait for user to upload first.
+     * Always auto-apply — IndexedDB data (entries) is NEVER affected by
+     * service worker updates. Only cached JS/CSS/HTML files are replaced.
+     * Blocking the update was trapping iOS users who couldn't upload with the old code.
      */
     async function handleSwUpdate(registration) {
       let pendingCount = 0;
@@ -805,18 +806,18 @@
         }
       } catch (e) { /* ignore */ }
 
-      if (pendingCount === 0) {
-        // No pending entries — safe to update immediately
+      if (pendingCount > 0) {
+        // Show a brief reassuring banner before auto-updating
+        showUpdateBanner(registration, pendingCount);
+      } else {
         console.log('[PWA] No pending uploads — applying update automatically');
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      } else {
-        // Has pending entries — show update banner
-        showUpdateBanner(registration, pendingCount);
       }
     }
 
     /**
-     * Show a sticky banner prompting the user to upload first.
+     * Show a brief informational banner, then auto-apply after 3 seconds.
+     * Data is safe — IndexedDB is independent of the service worker cache.
      */
     function showUpdateBanner(registration, count) {
       // Remove existing banner if any
@@ -826,53 +827,29 @@
       const banner = document.createElement('div');
       banner.id = 'updateBanner';
       banner.innerHTML =
-        '<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:0.88rem;">' +
-        '  <span style="font-size:1.3rem;">🔄</span>' +
+        '<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:0.88rem;">' +
+        '  <span style="font-size:1.3rem;">✅</span>' +
         '  <div style="flex:1;">' +
-        '    <strong>App update available!</strong><br>' +
-        '    <span style="font-size:0.8rem;opacity:0.9;">You have ' + count + ' pending entries. Go to Upload Queue and upload them first.</span>' +
+        '    <strong>Applying app update...</strong><br>' +
+        '    <span style="font-size:0.8rem;opacity:0.9;">Your ' + count + ' saved entries are safe and will NOT be deleted. The page will reload shortly.</span>' +
         '  </div>' +
-        '  <button id="updateNowBtn" onclick="applyUpdate()" style="padding:8px 16px;background:#fff;color:#0d47a1;border:none;border-radius:8px;font-weight:700;font-size:0.82rem;cursor:pointer;white-space:nowrap;">Update Now</button>' +
         '</div>';
       document.body.prepend(banner);
 
-      // Re-check pending count periodically
-      const checker = setInterval(async () => {
-        try {
-          const c = await getPendingCount();
-          if (c === 0) {
-            // All uploaded — auto-apply update
-            clearInterval(checker);
-            console.log('[PWA] All uploads done — applying update');
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }
-        } catch (e) { /* ignore */ }
-      }, 3000);
-
-      // Store registration for manual update button
+      // Store registration reference
       window._swRegistration = registration;
+
+      // Auto-apply after 3 seconds (gives user time to read the message)
+      setTimeout(() => {
+        console.log('[PWA] Auto-applying update — ' + count + ' entries safe in IndexedDB');
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }, 3000);
     }
 
     /**
-     * Manual "Update Now" button handler.
-     * Warns if there are still pending entries.
+     * Manual "Update Now" button handler (kept for backwards compat).
      */
     async function applyUpdate() {
-      let pendingCount = 0;
-      try {
-        pendingCount = await getPendingCount();
-      } catch (e) { /* ignore */ }
-
-      if (pendingCount > 0) {
-        const proceed = confirm(
-          'You still have ' + pendingCount + ' entries not yet uploaded.\n\n' +
-          'Updating will reload the app. Your saved entries will NOT be deleted, ' +
-          'but you should upload them first to be safe.\n\n' +
-          'Proceed with update?'
-        );
-        if (!proceed) return;
-      }
-
       if (window._swRegistration && window._swRegistration.waiting) {
         window._swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }

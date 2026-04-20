@@ -10,14 +10,13 @@
  *     detects it and installs the new SW in the background.
  *  2. The new SW does NOT auto-activate — it waits for the page to
  *     send a SKIP_WAITING message.
- *  3. The page checks for pending uploads in IndexedDB.
- *     - If pending > 0: show banner "Upload entries first, then tap Update"
- *     - If pending = 0: auto-update and reload
+ *  3. The page auto-applies the update after a brief reassuring banner.
+ *     IndexedDB data (saved entries) is NEVER affected by SW updates.
  *  4. Once SKIP_WAITING is received, the new SW activates, purges old cache,
  *     and the page reloads with fresh files.
  */
 
-const CACHE_VERSION = 'dataentry-v1.7.2';
+const CACHE_VERSION = 'dataentry-v1.7.3';
 const APP_SHELL = [
     './',
     './index.html',
