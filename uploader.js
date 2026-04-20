@@ -250,22 +250,11 @@ async function uploadAll() {
 
     broadcastMessage('upload_complete', result);
 
-    // ── Re-check: were new entries saved while we were uploading? ──
-    // If yes, start another upload cycle automatically
-    if (navigator.onLine) {
-        // We only want to auto-restart if there are strictly 'pending' items, not 'failed' ones.
-        const pendingItems = await getPendingSubmissions();
-        const strictlyPendingCount = pendingItems.filter(r => r.status === 'pending').length;
-        if (strictlyPendingCount > 0) {
-            console.log('[Upload] ' + strictlyPendingCount + ' new pending entries found after upload — starting another cycle');
-            // Small delay to let the UI update
-            await sleep(1000);
-            
-            // Release lock before recursion (new call will request it again)
-            if (_wakeLock !== null) { try { _wakeLock.release(); _wakeLock = null; } catch(e){} }
-            return uploadAll();
-        }
-    }
+    // ── Post-cycle check removed ──
+    // Do NOT auto-restart uploadAll() here. Any entries saved while this cycle
+    // was running will be picked up by the next manual "Upload All" or auto-sync trigger.
+    // Recursively calling uploadAll() was causing duplicate uploads when two upload
+    // sessions overlapped.
 
     // ── Release Wake Lock ──
     if (_wakeLock !== null) {
@@ -278,6 +267,7 @@ async function uploadAll() {
 
     return result;
 }
+
 
 /**
  * Upload a single submission by ID.
@@ -417,20 +407,14 @@ if (typeof window !== 'undefined') {
     // Reset any entries stuck in 'uploading' from interrupted uploads
     resetStuckUploading().then(count => {
         if (count > 0) {
-            console.log('[AutoSync] Reset ' + count + ' stuck entries');
+            console.log('[AutoSync] Reset ' + count + ' stuck entries back to pending');
         }
-        // Then enable auto-sync listener
+        // Enable online listener for auto-sync on reconnect
         enableAutoSync();
-
-        // Also auto-upload on page load if there are pending entries
-        if (navigator.onLine) {
-            getPendingCount().then(pending => {
-                if (pending > 0 && !_uploading) {
-                    console.log('[AutoSync] Found ' + pending + ' pending entries on load — starting upload');
-                    uploadAll();
-                }
-            }).catch(() => { /* ignore */ });
-        }
+        // Note: We do NOT auto-upload on page load here.
+        // Triggering uploadAll() automatically races with the user pressing "Upload All"
+        // and can cause the same entry to be uploaded twice.
+        // Users must tap "Upload All" manually to start a session.
     }).catch(() => {
         enableAutoSync();
     });

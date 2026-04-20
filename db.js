@@ -118,14 +118,27 @@ async function saveSubmission(payload, images) {
 }
 
 /**
- * Get all submissions with status "pending" or "failed".
- * Also picks up entries stuck in "uploading" (interrupted by navigation).
+ * Get all submissions ready to upload.
+ * Only returns 'pending' entries — NOT 'uploading' or 'failed'.
+ *
+ * WHY we exclude 'uploading':
+ *   An entry is set to 'uploading' the moment uploadAll() starts sending it.
+ *   If a second uploadAll() call fires (race with auto-sync or user button),
+ *   including 'uploading' entries here would cause that same entry to be
+ *   POSTed again → duplicate row in Google Sheets.
+ *   resetStuckUploading() handles genuinely orphaned 'uploading' entries
+ *   (from app crash / navigation away) by resetting them back to 'pending'.
+ *
+ * WHY we exclude 'failed':
+ *   Failed entries require the user to tap "Retry Failed" explicitly.
+ *   Auto-including them here created surprise re-uploads.
+ *
  * @returns {Promise<Array>}
  */
 async function getPendingSubmissions() {
     const db = await openDB();
     const all = await db.getAllFromIndex(STORE_NAME, 'status');
-    return all.filter(r => r.status === 'pending' || r.status === 'failed' || r.status === 'uploading');
+    return all.filter(r => r.status === 'pending');
 }
 
 /**
