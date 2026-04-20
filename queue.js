@@ -11,6 +11,7 @@
 let _allEntries = [];
 let _currentFilter = 'all';
 let _modalResolve = null;
+let _uploadLog = []; // In-session upload log lines
 
 // ─────────────────────────────────────────────
 // Initialization
@@ -280,24 +281,36 @@ async function handleUploadAll() {
     pauseBtn.style.display = 'block';
     progressContainer.style.display = 'block';
 
+    // Reset the log for this session
+    _uploadLog = [];
+    const logEl = document.getElementById('uploadLogList');
+    const logPanel = document.getElementById('uploadLogPanel');
+    if (logEl) logEl.innerHTML = '';
+    if (logPanel) logPanel.style.display = 'block';
+    appendLog('🚀 Upload session started', 'info');
+
     const result = await uploadAll();
 
     // Reset UI
     uploadBtn.disabled = false;
     uploadBtn.querySelector('.btn-text').textContent = 'Upload All';
     pauseBtn.style.display = 'none';
-    progressContainer.style.display = 'none';
 
     if (result) {
         await refreshList();
         await updateStorageMeter();
 
         if (result.failed === 0 && result.uploaded > 0) {
+            appendLog('✅ All ' + result.uploaded + ' entries uploaded successfully!', 'success');
             showNotification('✅ All ' + result.uploaded + ' entries uploaded successfully!');
+            progressContainer.style.display = 'none';
         } else if (result.failed > 0) {
+            appendLog('⚠️ Session ended: ' + result.uploaded + ' uploaded, ' + result.failed + ' failed.', 'warn');
             showNotification('⚠️ ' + result.uploaded + ' uploaded, ' + result.failed + ' failed. Tap "Retry Failed" to try again.');
         } else {
+            appendLog('ℹ️ No pending entries found.', 'info');
             showNotification('No pending entries to upload.');
+            progressContainer.style.display = 'none';
         }
     }
 }
@@ -689,6 +702,42 @@ function showNotification(text) {
     }, 3000);
 }
 
+/**
+ * Copy the upload log text to clipboard.
+ * Users can paste this and share with admin for debugging.
+ */
+function copyUploadLog() {
+    if (_uploadLog.length === 0) {
+        showNotification('No log to copy yet.');
+        return;
+    }
+    const text = 'Upload Log — ' + new Date().toLocaleString('en-NG') + '\n' +
+        _uploadLog.map(l => '[' + l.ts + '] ' + l.text).join('\n');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showNotification('📋 Log copied! Paste it to share with your admin.');
+        }).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try {
+        document.execCommand('copy');
+        showNotification('📋 Log copied! Paste it to share with your admin.');
+    } catch (e) {
+        showNotification('❌ Could not copy. Screenshot the log instead.');
+    }
+    document.body.removeChild(ta);
+}
+
 // ─────────────────────────────────────────────
 // BroadcastChannel Handler
 // ─────────────────────────────────────────────
@@ -723,6 +772,30 @@ function handleBroadcast(msg) {
 }
 
 /**
+ * Append a line to the in-session upload log panel.
+ * @param {string} text - Message to log
+ * @param {'info'|'success'|'error'|'warn'} type
+ */
+function appendLog(text, type) {
+    const now = new Date();
+    const ts = now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    _uploadLog.push({ ts, text, type });
+
+    const logEl = document.getElementById('uploadLogList');
+    if (!logEl) return;
+
+    const colorMap = { info: '#90caf9', success: '#69f0ae', error: '#ef5350', warn: '#ffd54f' };
+    const line = document.createElement('div');
+    line.className = 'upload-log-line';
+    line.style.color = colorMap[type] || '#90caf9';
+    line.innerHTML = '<span class="log-ts">' + ts + '</span> ' + escapeHtml(text);
+    logEl.appendChild(line);
+
+    // Auto-scroll to bottom
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+/**
  * Update the progress bar during upload.
  */
 function updateProgress(msg) {
@@ -737,6 +810,7 @@ function updateProgress(msg) {
     if (msg.status === 'waiting') {
         if (text) text.textContent = '🕒 Server busy — auto-retrying...';
         if (current) current.textContent = '⏳ Waiting ' + (msg.waitSeconds || '') + 's before retry...';
+        appendLog('🕒 Server busy — waiting ' + (msg.waitSeconds || '?') + 's...', 'warn');
     } else {
         if (text) text.textContent = 'Uploading...';
         
@@ -747,6 +821,15 @@ function updateProgress(msg) {
         if (current) {
             const icon = msg.status === 'confirmed' ? '✅' : msg.status === 'failed' ? '❌' : '⬆️';
             current.textContent = icon + ' ' + (msg.entryName || 'Entry');
+        }
+
+        // Log each individual entry result
+        if (msg.status === 'confirmed') {
+            appendLog('✅ Uploaded: ' + (msg.entryName || 'Entry'), 'success');
+        } else if (msg.status === 'failed') {
+            appendLog('❌ Failed: ' + (msg.entryName || 'Entry') + (msg.error ? ' — ' + msg.error : ''), 'error');
+        } else if (msg.status === 'uploading') {
+            appendLog('⬆️ Sending: ' + (msg.entryName || 'Entry') + ' (' + msg.current + '/' + msg.total + ')', 'info');
         }
     }
 }

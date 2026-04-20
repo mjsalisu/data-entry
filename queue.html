@@ -93,6 +93,15 @@
         <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
       </div>
       <div class="progress-current" id="progressCurrent"></div>
+
+      <!-- Upload Log Panel -->
+      <div class="upload-log-panel" id="uploadLogPanel" style="display:none;">
+        <div class="upload-log-header">
+          <span>📋 Upload Log</span>
+          <button class="log-copy-btn" onclick="copyUploadLog()" title="Copy log to clipboard">📋 Copy</button>
+        </div>
+        <div class="upload-log-list" id="uploadLogList"></div>
+      </div>
     </div>
 
     <!-- Filter Tabs -->

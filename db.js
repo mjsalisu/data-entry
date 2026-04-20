@@ -56,18 +56,40 @@ function dataUrlToBlob(dataUrl) {
 
 /**
  * Convert a Blob back to a base64 data URL (needed at upload time).
- * @param {Blob} blob
+ *
+ * WHY the timeout exists:
+ *   iOS Safari stores Blob objects in IndexedDB but then invalidates them
+ *   after the app has been backgrounded or after time passes. When this
+ *   happens, FileReader silently hangs — neither onload nor onerror ever
+ *   fires. This caused the entire upload loop to freeze at the first old
+ *   Blob-format entry (showing "5%" / entry 2 forever).
+ *   The 10-second timeout races against FileReader so a dead Blob returns
+ *   an empty string instead of hanging the process.
+ *
+ * @param {Blob|string} blob
  * @returns {Promise<string>}
  */
 function blobToDataUrl(blob) {
-    return new Promise((resolve, reject) => {
-        if (!blob) { resolve(''); return; }
-        if (typeof blob === 'string') { resolve(blob); return; } // Fast path for stored strings
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+    if (!blob) return Promise.resolve('');
+    if (typeof blob === 'string') return Promise.resolve(blob); // Fast path: already a string
+
+    // Wrap FileReader in a timeout race to handle iOS-invalidated Blobs
+    return Promise.race([
+        // Primary: FileReader conversion
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(blob);
+        }),
+        // Safety net: if FileReader never fires (dead Blob on iOS), resolve with '' after 10s
+        new Promise((resolve) => {
+            setTimeout(() => {
+                console.warn('[blobToDataUrl] FileReader timed out — Blob may be invalid (iOS bug). Skipping image for this entry.');
+                resolve(''); // Return empty string; upload continues without the image
+            }, 10000);
+        })
+    ]);
 }
 
 /**
@@ -307,3 +329,78 @@ async function resetStuckUploading() {
     console.log('[DB] Reset ' + stuck.length + ' stuck uploading entries to pending');
     return stuck.length;
 }
+
+/**
+ * Migrate old Blob-format image entries to base64 strings.
+ *
+ * WHY this is critical on iOS:
+ *   Before our fix, images were stored as Blob objects in IndexedDB.
+ *   iOS Safari invalidates these Blobs after the app is backgrounded or
+ *   after some time passes — FileReader then silently hangs forever.
+ *   This migration runs EAGERLY on page load to convert all Blob entries
+ *   to base64 strings BEFORE iOS has a chance to invalidate them.
+ *
+ *   - Entries already stored as strings → skipped instantly (no-op)
+ *   - Entries stored as live Blobs → converted to base64 and saved back
+ *   - Entries whose Blobs iOS has already killed → saved as '' (prevents
+ *     future upload hangs; the text data is still uploaded correctly)
+ *
+ * @returns {Promise<{migrated: number, alreadyString: number, failed: number}>}
+ */
+async function migrateBlobsToBase64() {
+    const db = await openDB();
+    const all = await db.getAll(STORE_NAME);
+
+    // Only process entries that still have at least one Blob (not string)
+    const needsMigration = all.filter(r =>
+        (r.pretestBlob && typeof r.pretestBlob !== 'string') ||
+        (r.posttestBlob && typeof r.posttestBlob !== 'string')
+    );
+
+    if (needsMigration.length === 0) {
+        console.log('[DB] migrateBlobsToBase64: all entries are already base64 — nothing to do.');
+        return { migrated: 0, alreadyString: all.length, failed: 0 };
+    }
+
+    console.log('[DB] migrateBlobsToBase64: found ' + needsMigration.length + ' entries with Blob images. Converting...');
+
+    let migrated = 0;
+    let failed = 0;
+
+    for (const record of needsMigration) {
+        let changed = false;
+
+        // Convert pretest Blob
+        if (record.pretestBlob && typeof record.pretestBlob !== 'string') {
+            const result = await blobToDataUrl(record.pretestBlob);
+            record.pretestBlob = result; // '' if Blob was dead, base64 if live
+            changed = true;
+            if (!result) {
+                console.warn('[DB] migrateBlobsToBase64: pretest Blob was already dead for entry', record.id, '(iOS invalidated it)');
+                failed++;
+            }
+        }
+
+        // Convert posttest Blob
+        if (record.posttestBlob && typeof record.posttestBlob !== 'string') {
+            const result = await blobToDataUrl(record.posttestBlob);
+            record.posttestBlob = result;
+            changed = true;
+            if (!result) {
+                console.warn('[DB] migrateBlobsToBase64: posttest Blob was already dead for entry', record.id, '(iOS invalidated it)');
+            }
+        }
+
+        if (changed) {
+            // Save the converted record back to IndexedDB
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.store.put(record);
+            await tx.done;
+            migrated++;
+        }
+    }
+
+    console.log('[DB] migrateBlobsToBase64 complete: ' + migrated + ' migrated, ' + failed + ' had dead Blobs (images lost to iOS).');
+    return { migrated, alreadyString: all.length - needsMigration.length, failed };
+}
+

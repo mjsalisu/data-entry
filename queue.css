@@ -252,6 +252,54 @@
   text-overflow: ellipsis;
 }
 
+/* ── Upload Log Panel ── */
+.upload-log-panel {
+  margin-top: 10px;
+  border-top: 1px solid rgba(100, 181, 246, 0.15);
+  padding-top: 8px;
+}
+.upload-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #64b5f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.log-copy-btn {
+  padding: 3px 10px;
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  background: rgba(100, 181, 246, 0.08);
+  color: #64b5f6;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.log-copy-btn:hover { background: rgba(100, 181, 246, 0.18); }
+.upload-log-list {
+  max-height: 140px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.72rem;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  line-height: 1.6;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.upload-log-list::-webkit-scrollbar { width: 3px; }
+.upload-log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.upload-log-line { word-break: break-word; }
+.log-ts {
+  opacity: 0.45;
+  font-size: 0.68rem;
+  margin-right: 4px;
+}
+
 /* ── Filter Tabs ── */
 .filter-tabs {
   display: flex;

@@ -404,21 +404,30 @@ function enableAutoSync() {
 
 // Auto-enable on load
 if (typeof window !== 'undefined') {
-    // Reset any entries stuck in 'uploading' from interrupted uploads
+    // Step 1: Reset any entries stuck in 'uploading' from interrupted uploads
     resetStuckUploading().then(count => {
         if (count > 0) {
             console.log('[AutoSync] Reset ' + count + ' stuck entries back to pending');
         }
-        // Enable online listener for auto-sync on reconnect
+
+        // Step 2: Migrate any old Blob-format images to base64 strings.
+        // This MUST run eagerly on every page load to convert Blobs while they're
+        // still valid. iOS invalidates Blobs silently over time — if we wait until
+        // upload time, FileReader will hang forever on already-dead Blobs.
+        return migrateBlobsToBase64();
+    }).then(migrationResult => {
+        if (migrationResult && migrationResult.migrated > 0) {
+            console.log('[AutoSync] Blob migration: ' +
+                migrationResult.migrated + ' entries converted to base64, ' +
+                migrationResult.failed + ' had images already lost by iOS.');
+        }
+        // Step 3: Enable online listener for auto-sync on reconnect
         enableAutoSync();
-        // Note: We do NOT auto-upload on page load here.
-        // Triggering uploadAll() automatically races with the user pressing "Upload All"
-        // and can cause the same entry to be uploaded twice.
-        // Users must tap "Upload All" manually to start a session.
     }).catch(() => {
         enableAutoSync();
     });
 }
+
 
 // ── Background & Visibility Watcher ──
 // Auto-reacquire Wake Lock if they come back from another tab mid-upload
