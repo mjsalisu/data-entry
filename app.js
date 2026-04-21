@@ -420,7 +420,7 @@ function discardDraft() {
         const fileInput = document.getElementById('fileInput-' + key);
         const valMsg = document.getElementById(key + '_validation_msg');
         const groupEl = document.getElementById(key + '_snapshot_group');
-        if (preview) { preview.style.display = 'none'; preview.src = ''; }
+        if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
         if (fileInput) fileInput.value = '';
         if (valMsg) valMsg.style.display = 'block';
         if (groupEl) {

@@ -197,10 +197,19 @@ async function uploadAll() {
                 mode: 'no-cors'
             }, 3); // up to 3 attempts
 
-            // POST succeeded (no error thrown) — mark as confirmed
+            // POST succeeded (no error thrown)
             // Server-side LockService + UUID duplicate detection ensure safe writes
-            // Manual verification available via the "Verify" button on queue page
-            await updateSubmissionStatus(record.id, 'confirmed', null);
+            // We now mark as 'uploaded'. User must run "Verify" to upgrade to 'confirmed'.
+            await updateSubmissionStatus(record.id, 'uploaded', null);
+            
+            // ── Track Monthly Stats ──
+            try {
+                const monthKey = new Date().toISOString().slice(0, 7); // e.g., "2026-04"
+                let stats = JSON.parse(localStorage.getItem('monthly_upload_stats') || '{}');
+                stats[monthKey] = (stats[monthKey] || 0) + 1;
+                localStorage.setItem('monthly_upload_stats', JSON.stringify(stats));
+            } catch(e) {}
+
             uploaded++;
             consecutiveFailures = 0;
             broadcastMessage('upload_progress', {
@@ -208,7 +217,7 @@ async function uploadAll() {
                 total: _uploadProgress.total,
                 entryId: record.id,
                 entryName: record.payload.name || 'Unknown',
-                status: 'confirmed'
+                status: 'uploaded'
             });
 
         } catch (err) {

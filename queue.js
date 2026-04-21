@@ -176,6 +176,17 @@ async function updateStats() {
     if (btnCount) {
         btnCount.textContent = counts.pending > 0 ? counts.pending : '';
     }
+
+    // Update Monthly Stats Tracker
+    try {
+        const monthKey = new Date().toISOString().slice(0, 7); // e.g., "2026-04"
+        const stats = JSON.parse(localStorage.getItem('monthly_upload_stats') || '{}');
+        const monthCount = stats[monthKey] || 0;
+        const monthlyStatsEl = document.getElementById('monthlyUploadsCount');
+        if (monthlyStatsEl) {
+            monthlyStatsEl.textContent = monthCount.toLocaleString();
+        }
+    } catch(e) {}
 }
 
 /**
@@ -332,18 +343,23 @@ async function handleRetryAll() {
 
 async function handleClearConfirmed() {
     const counts = await getStatusCounts();
-    const total = counts.confirmed + counts.uploaded;
+    const total = counts.confirmed; // Only delete fully verified ('confirmed') entries
+    
+    // We intentionally ignore `uploaded` entries here since they are unverified.
 
-    if (total === 0) return;
+    if (total === 0) {
+        showNotification('No verified entries to clear.');
+        return;
+    }
 
     const confirmed = await showModal(
-        'Clear Uploaded Entries',
-        'Are you sure you want to permanently remove ' + total + ' uploaded entries from this device?\n\nRun "Verify Uploads" first if you want to confirm they\'re in Google Sheets.'
+        'Clear Verified Entries',
+        'Are you sure you want to permanently remove ' + total + ' completely verified entries from this device?'
     );
 
     if (confirmed) {
         const cleared = await clearConfirmed();
-        showNotification('🗑️ Cleared ' + cleared + ' entries');
+        showNotification('🗑️ Cleared ' + cleared + ' verified entries');
         await refreshList();
         await updateStorageMeter();
     }

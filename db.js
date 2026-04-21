@@ -159,8 +159,8 @@ async function saveSubmission(payload, images) {
  */
 async function getPendingSubmissions() {
     const db = await openDB();
-    const all = await db.getAllFromIndex(STORE_NAME, 'status');
-    return all.filter(r => r.status === 'pending');
+    // Retrieve only 'pending' items using the status index to avoid OOM
+    return db.getAllFromIndex(STORE_NAME, 'status', 'pending');
 }
 
 /**
@@ -215,19 +215,22 @@ async function deleteSubmission(id) {
 }
 
 /**
- * Delete all submissions with status "confirmed" or "uploaded".
+ * Delete all submissions with status "confirmed".
+ * Does NOT delete "uploaded" (which are assumed unverified).
  * @returns {Promise<number>} Number of entries cleared
  */
 async function clearConfirmed() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
-    const toClear = all.filter(r => r.status === 'confirmed' || r.status === 'uploaded');
+    const toClearKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'confirmed');
+    
+    if (toClearKeys.length === 0) return 0;
+
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    for (const record of toClear) {
-        tx.store.delete(record.id);
+    for (const key of toClearKeys) {
+        tx.store.delete(key);
     }
     await tx.done;
-    return toClear.length;
+    return toClearKeys.length;
 }
 
 /**
@@ -237,8 +240,12 @@ async function clearConfirmed() {
  */
 async function getPendingCount() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
-    return all.filter(r => r.status === 'pending' || r.status === 'failed').length;
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.store;
+    const index = store.index('status');
+    const pending = await index.count('pending');
+    const failed = await index.count('failed');
+    return pending + failed;
 }
 
 /**
@@ -247,14 +254,17 @@ async function getPendingCount() {
  */
 async function getStatusCounts() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.store;
+    const index = store.index('status');
+
     return {
-        total: all.length,
-        pending: all.filter(r => r.status === 'pending').length,
-        uploading: all.filter(r => r.status === 'uploading').length,
-        uploaded: all.filter(r => r.status === 'uploaded').length,
-        confirmed: all.filter(r => r.status === 'confirmed').length,
-        failed: all.filter(r => r.status === 'failed').length
+        total: await store.count(),
+        pending: await index.count('pending'),
+        uploading: await index.count('uploading'),
+        uploaded: await index.count('uploaded'),
+        confirmed: await index.count('confirmed'),
+        failed: await index.count('failed')
     };
 }
 
@@ -295,8 +305,10 @@ async function retrySubmission(id) {
  */
 async function retryAllFailed() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
-    const failed = all.filter(r => r.status === 'failed');
+    const failed = await db.getAllFromIndex(STORE_NAME, 'status', 'failed');
+    
+    if (failed.length === 0) return 0;
+    
     const tx = db.transaction(STORE_NAME, 'readwrite');
     for (const record of failed) {
         record.status = 'pending';
@@ -315,8 +327,8 @@ async function retryAllFailed() {
  */
 async function resetStuckUploading() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
-    const stuck = all.filter(r => r.status === 'uploading');
+    const stuck = await db.getAllFromIndex(STORE_NAME, 'status', 'uploading');
+    
     if (stuck.length === 0) return 0;
 
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -349,25 +361,25 @@ async function resetStuckUploading() {
  */
 async function migrateBlobsToBase64() {
     const db = await openDB();
-    const all = await db.getAll(STORE_NAME);
-
-    // Only process entries that still have at least one Blob (not string)
-    const needsMigration = all.filter(r =>
-        (r.pretestBlob && typeof r.pretestBlob !== 'string') ||
-        (r.posttestBlob && typeof r.posttestBlob !== 'string')
-    );
-
-    if (needsMigration.length === 0) {
-        console.log('[DB] migrateBlobsToBase64: all entries are already base64 — nothing to do.');
-        return { migrated: 0, alreadyString: all.length, failed: 0 };
-    }
-
-    console.log('[DB] migrateBlobsToBase64: found ' + needsMigration.length + ' entries with Blob images. Converting...');
-
+    
     let migrated = 0;
     let failed = 0;
+    let alreadyStringCount = 0;
 
-    for (const record of needsMigration) {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    let cursor = await tx.store.openCursor();
+
+    while (cursor) {
+        const record = cursor.value;
+        const needsMig = (record.pretestBlob && typeof record.pretestBlob !== 'string') ||
+                         (record.posttestBlob && typeof record.posttestBlob !== 'string');
+
+        if (!needsMig) {
+            alreadyStringCount++;
+            cursor = await cursor.continue();
+            continue;
+        }
+
         let changed = false;
 
         // Convert pretest Blob
@@ -376,7 +388,7 @@ async function migrateBlobsToBase64() {
             record.pretestBlob = result; // '' if Blob was dead, base64 if live
             changed = true;
             if (!result) {
-                console.warn('[DB] migrateBlobsToBase64: pretest Blob was already dead for entry', record.id, '(iOS invalidated it)');
+                console.warn('[DB] migrateBlobsToBase64: pretest Blob was already dead for entry', record.id);
                 failed++;
             }
         }
@@ -387,20 +399,21 @@ async function migrateBlobsToBase64() {
             record.posttestBlob = result;
             changed = true;
             if (!result) {
-                console.warn('[DB] migrateBlobsToBase64: posttest Blob was already dead for entry', record.id, '(iOS invalidated it)');
+                console.warn('[DB] migrateBlobsToBase64: posttest Blob was already dead for entry', record.id);
             }
         }
 
         if (changed) {
-            // Save the converted record back to IndexedDB
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.store.put(record);
-            await tx.done;
+            await cursor.update(record);
             migrated++;
         }
-    }
 
-    console.log('[DB] migrateBlobsToBase64 complete: ' + migrated + ' migrated, ' + failed + ' had dead Blobs (images lost to iOS).');
-    return { migrated, alreadyString: all.length - needsMigration.length, failed };
+        cursor = await cursor.continue();
+    }
+    
+    await tx.done;
+
+    console.log('[DB] migrateBlobsToBase64 complete: ' + migrated + ' migrated, ' + failed + ' had dead Blobs.');
+    return { migrated, alreadyString: alreadyStringCount, failed };
 }
 
