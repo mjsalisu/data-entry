@@ -751,6 +751,33 @@
   <script src="config.js"></script>
   <script src="camera.js"></script>
   <script src="datepicker.js"></script>
+  <!-- App Version Footer -->
+  <div class="app-version-footer" id="appVersionFooter">
+    Loading version info...
+  </div>
+  <script>
+    (function () {
+      // Fetch sw.js to dynamically extract the CACHE_VERSION and Last-Modified date
+      fetch('sw.js', { cache: 'no-cache' })
+        .then(res => {
+          const lastMod = res.headers.get('Last-Modified');
+          // If header exists, parse it. Otherwise fallback to current time as a baseline.
+          const dateStr = lastMod ? new Date(lastMod).toLocaleString('en-NG') : new Date().toLocaleString('en-NG');
+          return res.text().then(text => ({ text, dateStr }));
+        })
+        .then(({ text, dateStr }) => {
+          const match = text.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+          let version = match ? match[1] : 'Unknown';
+          version = version.replace('dataentry-', ''); // Clean up string
+          
+          document.getElementById('appVersionFooter').innerText = version + ' • ' + dateStr;
+        })
+        .catch(err => {
+          document.getElementById('appVersionFooter').innerText = 'Version fetch failed';
+        });
+    })();
+  </script>
+
   <script src="db.js"></script>
   <script src="uploader.js"></script>
   <script src="app.js"></script>
