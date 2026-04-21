@@ -10,7 +10,7 @@
  */
 
 const MAX_IMAGE_DIMENSION = 2048;
-const JPEG_QUALITY = 0.92;
+const JPEG_QUALITY = 0.98; // Increased from 0.92 for near-lossless crystal clear images
 
 /**
  * Called when the user selects/captures a file via the native file input.

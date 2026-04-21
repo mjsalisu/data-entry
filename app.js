@@ -1042,57 +1042,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         delete payload.image_pretest;
         delete payload.image_posttest;
 
-        saveSubmission(payload, images)
-            .then(async (result) => {
-                // Clear draft on successful save
-                localStorage.removeItem(DRAFT_KEY);
+        // Wrap saveSubmission in a race timeout so it doesn't hang forever if iOS IndexedDB freezes
+        const savePromise = saveSubmission(payload, images);
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('Storage is busy or full (iOS bug). Please restart your browser or free up space and try again.'));
+            }, 8000);
+        });
 
-                // Increment session save counter
-                const SESSION_COUNT_KEY = 'jobberman_submission_count';
-                let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
-                sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
+        try {
+            Promise.race([savePromise, timeoutPromise])
+                .then(async (result) => {
+                    // Clear draft on successful save
+                    localStorage.removeItem(DRAFT_KEY);
 
-                // Show success screen, hide form
-                document.getElementById('dataForm').style.display = 'none';
-                const successScreen = document.getElementById('successScreen');
-                successScreen.style.display = 'block';
-                document.getElementById('submissionCount').textContent = count;
+                    // Increment session save counter
+                    const SESSION_COUNT_KEY = 'jobberman_submission_count';
+                    let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
+                    sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
 
-                // Update pending count on success screen
-                const pendingCount = await getPendingCount();
-                const pendingEl = document.getElementById('pendingCountSuccess');
-                if (pendingEl) pendingEl.textContent = pendingCount;
+                    // Show success screen, hide form
+                    document.getElementById('dataForm').style.display = 'none';
+                    const successScreen = document.getElementById('successScreen');
+                    successScreen.style.display = 'block';
+                    document.getElementById('submissionCount').textContent = count;
 
-                // Update the floating badge
-                updateQueueBadge();
+                    // Update pending count on success screen
+                    const pendingCount = await getPendingCount();
+                    const pendingEl = document.getElementById('pendingCountSuccess');
+                    if (pendingEl) pendingEl.textContent = pendingCount;
 
-                // Broadcast to queue page that a new entry was saved
-                broadcastMessage('entry_saved', { id: result.id, uuid: result.uuid });
+                    // Update the floating badge
+                    updateQueueBadge();
 
-                // ── Auto-upload if online ──
-                // If the user has internet, start background upload immediately
-                // No need to visit the queue page — it just happens
-                if (navigator.onLine && typeof uploadAll === 'function' && !isUploading()) {
-                    console.log('[AutoSync] Entry saved while online — starting background upload');
-                    uploadAll(); // runs async, doesn't block the UI
-                }
+                    // Broadcast to queue page that a new entry was saved
+                    broadcastMessage('entry_saved', { id: result.id, uuid: result.uuid });
 
-                // Re-trigger the SVG animation by cloning and replacing the SVG
-                const svg = successScreen.querySelector('.success-checkmark svg');
-                if (svg) {
-                    const clone = svg.cloneNode(true);
-                    svg.parentNode.replaceChild(clone, svg);
-                }
+                    // ── Auto-upload if online ──
+                    // If the user has internet, start background upload immediately
+                    // No need to visit the queue page — it just happens
+                    if (navigator.onLine && typeof uploadAll === 'function' && !isUploading()) {
+                        console.log('[AutoSync] Entry saved while online — starting background upload');
+                        uploadAll(); // runs async, doesn't block the UI
+                    }
 
-                // Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            })
-            .catch(err => {
-                alert('Error saving locally: ' + err.message);
-                subBtn.disabled = false;
-                subBtn.innerHTML = '💾 Save Entry';
-                loader.style.display = 'none';
-            });
+                    // Re-trigger the SVG animation by cloning and replacing the SVG
+                    const svg = successScreen.querySelector('.success-checkmark svg');
+                    if (svg) {
+                        const clone = svg.cloneNode(true);
+                        svg.parentNode.replaceChild(clone, svg);
+                    }
+
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                    // Re-enable button behind the scenes in case they click "Submit Another"
+                    subBtn.disabled = false;
+                    subBtn.innerHTML = '💾 Save Entry';
+                    loader.style.display = 'none';
+                })
+                .catch(err => {
+                    console.error('[saveSubmission error]', err);
+                    alert('Error saving locally: ' + err.message);
+                    subBtn.disabled = false;
+                    subBtn.innerHTML = '💾 Save Entry';
+                    loader.style.display = 'none';
+                });
+        } catch (syncErr) {
+            console.error('[Sync Mapping Error]', syncErr);
+            alert('A critical error occurred processing the form: ' + syncErr.message);
+            subBtn.disabled = false;
+            subBtn.innerHTML = '💾 Save Entry';
+            loader.style.display = 'none';
+        }
     });
 
     // ── "Submit Another Response" Button Handler ──
