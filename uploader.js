@@ -178,9 +178,21 @@ async function uploadAll() {
             // Mark as uploading
             await updateSubmissionStatus(record.id, 'uploading', null);
 
-            // Convert Blobs back to data URLs for the existing endpoint
-            const pretestDataUrl = await blobToDataUrl(record.pretestBlob);
-            const posttestDataUrl = await blobToDataUrl(record.posttestBlob);
+            // Convert Blobs back to data URLs for the existing endpoint.
+            // If image read fails (dead iOS Blob, corruption), skip images
+            // and upload text data anyway — data is more important than photos.
+            let pretestDataUrl = '';
+            let posttestDataUrl = '';
+            try {
+                pretestDataUrl = await blobToDataUrl(record.pretestBlob);
+            } catch (imgErr) {
+                console.warn('[Upload] Pretest image unreadable for entry', record.id, '— uploading without it.');
+            }
+            try {
+                posttestDataUrl = await blobToDataUrl(record.posttestBlob);
+            } catch (imgErr) {
+                console.warn('[Upload] Posttest image unreadable for entry', record.id, '— uploading without it.');
+            }
 
             // Build the full payload with images
             const fullPayload = {
@@ -290,8 +302,18 @@ async function uploadSingle(id) {
     try {
         await updateSubmissionStatus(id, 'uploading', null);
 
-        const pretestDataUrl = await blobToDataUrl(record.pretestBlob);
-        const posttestDataUrl = await blobToDataUrl(record.posttestBlob);
+        let pretestDataUrl = '';
+        let posttestDataUrl = '';
+        try {
+            pretestDataUrl = await blobToDataUrl(record.pretestBlob);
+        } catch (imgErr) {
+            console.warn('[Upload] Pretest image unreadable for entry', id, '— uploading without it.');
+        }
+        try {
+            posttestDataUrl = await blobToDataUrl(record.posttestBlob);
+        } catch (imgErr) {
+            console.warn('[Upload] Posttest image unreadable for entry', id, '— uploading without it.');
+        }
 
         const fullPayload = {
             ...record.payload,
