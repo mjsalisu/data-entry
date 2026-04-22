@@ -179,6 +179,56 @@ async function getAllSubmissions() {
 }
 
 /**
+ * Get all submissions WITHOUT image data (for list rendering).
+ *
+ * WHY this exists:
+ *   getAllSubmissions() loads every field including pretestBlob and posttestBlob,
+ *   which are multi-MB base64 strings. With 200+ entries, this can consume
+ *   500MB–1GB+ of RAM, crashing Chrome on Android ("Aw, Snap!").
+ *   This function uses a cursor to copy only the metadata fields needed
+ *   for the queue list UI, keeping memory usage under a few MB.
+ *
+ * @returns {Promise<Array>}
+ */
+async function getAllSubmissionsLight() {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const results = [];
+    let cursor = await tx.store.openCursor();
+
+    while (cursor) {
+        const r = cursor.value;
+        results.push({
+            id: r.id,
+            uuid: r.uuid,
+            payload: r.payload,  // Text fields only (~1-2KB each)
+            status: r.status,
+            createdAt: r.createdAt,
+            uploadedAt: r.uploadedAt,
+            error: r.error
+            // Deliberately omit pretestBlob and posttestBlob (~2-5MB each)
+        });
+        cursor = await cursor.continue();
+    }
+
+    return results.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Get IDs of all pending and uploading submissions.
+ * Only loads keys, not full records — prevents memory exhaustion
+ * when there are 100+ entries with large image data.
+ *
+ * @returns {Promise<Array<number>>}
+ */
+async function getPendingSubmissionIds() {
+    const db = await openDB();
+    const pendingKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'pending');
+    const uploadingKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'uploading');
+    return pendingKeys.concat(uploadingKeys);
+}
+
+/**
  * Get a single submission by ID.
  * @param {number} id
  * @returns {Promise<Object|undefined>}
