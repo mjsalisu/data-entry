@@ -292,10 +292,20 @@
       }
     }
 
-    // Persistent storage
+    // Persistent storage — warn user if denied (data at risk of iOS eviction)
     if (navigator.storage && navigator.storage.persist) {
       navigator.storage.persist().then(granted => {
         console.log('[Storage] Persistent storage ' + (granted ? 'granted' : 'denied'));
+        const warningEl = document.getElementById('storageWarning');
+        if (!granted && warningEl) {
+          warningEl.innerHTML =
+            '<span class="warning-icon">⚠️</span>' +
+            '<p style="color:#ff6b6b;"><strong>Storage protection was DENIED by this browser.</strong> ' +
+            'Your saved entries may be deleted by iOS if storage runs low. ' +
+            '<strong>Upload your entries as soon as possible.</strong> ' +
+            'Try adding this site to your Home Screen to improve storage protection.</p>';
+          warningEl.style.borderColor = '#ff4444';
+        }
       });
     }
   </script>

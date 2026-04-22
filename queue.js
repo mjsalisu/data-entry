@@ -167,7 +167,7 @@ async function updateStats() {
     const counts = await getStatusCounts();
 
     document.getElementById('statTotal').textContent = counts.total;
-    document.getElementById('statPending').textContent = counts.pending;
+    document.getElementById('statPending').textContent = counts.pending + counts.uploading;
     document.getElementById('statConfirmed').textContent = counts.confirmed + counts.uploaded;
     document.getElementById('statFailed').textContent = counts.failed;
 
@@ -186,7 +186,7 @@ async function updateStats() {
         if (monthlyStatsEl) {
             monthlyStatsEl.textContent = monthCount.toLocaleString();
         }
-    } catch(e) {}
+    } catch (e) { }
 }
 
 /**
@@ -194,7 +194,7 @@ async function updateStats() {
  */
 function updateControlsVisibility() {
     const counts = {
-        pending: _allEntries.filter(e => e.status === 'pending').length,
+        pending: _allEntries.filter(e => e.status === 'pending' || e.status === 'uploading').length,
         failed: _allEntries.filter(e => e.status === 'failed').length,
         confirmed: _allEntries.filter(e => e.status === 'confirmed' || e.status === 'uploaded').length
     };
@@ -300,6 +300,10 @@ async function handleUploadAll() {
     if (logPanel) logPanel.style.display = 'block';
     appendLog('🚀 Upload session started', 'info');
 
+    // Make sure any previously stuck "uploading" entries are reset to "pending"
+    // before we grab the list of pending items to upload.
+    await resetStuckUploading();
+
     const result = await uploadAll();
 
     // Reset UI
@@ -344,7 +348,7 @@ async function handleRetryAll() {
 async function handleClearConfirmed() {
     const counts = await getStatusCounts();
     const total = counts.confirmed; // Only delete fully verified ('confirmed') entries
-    
+
     // We intentionally ignore `uploaded` entries here since they are unverified.
 
     if (total === 0) {
@@ -829,9 +833,9 @@ function updateProgress(msg) {
         appendLog('🕒 Server busy — waiting ' + (msg.waitSeconds || '?') + 's...', 'warn');
     } else {
         if (text) text.textContent = 'Uploading...';
-        
+
         const pct = msg.total > 0 ? Math.round((msg.current / msg.total) * 100) : 0;
-        
+
         if (count) count.textContent = msg.current + '/' + msg.total + ' (' + pct + '%)';
         if (fill) fill.style.width = pct + '%';
         if (current) {
