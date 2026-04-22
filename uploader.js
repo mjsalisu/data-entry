@@ -105,11 +105,15 @@ async function uploadAll() {
     // Prevent iOS/Android from sleeping the screen while uploading
     try {
         if ('wakeLock' in navigator) {
-            _wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Wake Lock active: Screen will stay on.');
+            navigator.wakeLock.request('screen').then(lock => {
+                _wakeLock = lock;
+                console.log('Wake Lock active: Screen will stay on.');
+            }).catch(err => {
+                console.warn(`Wake Lock failed: ${err.message}`);
+            });
         }
     } catch (err) {
-        console.warn(`Wake Lock failed: ${err.message}`);
+        console.warn(`Wake Lock try/catch failed: ${err.message}`);
     }
 
     const pending = await getPendingSubmissions();

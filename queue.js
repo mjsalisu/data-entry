@@ -300,11 +300,18 @@ async function handleUploadAll() {
     if (logPanel) logPanel.style.display = 'block';
     appendLog('🚀 Upload session started', 'info');
 
-    // Make sure any previously stuck "uploading" entries are reset to "pending"
-    // before we grab the list of pending items to upload.
-    await resetStuckUploading();
+    let result = null;
+    try {
+        // Make sure any previously stuck "uploading" entries are reset to "pending"
+        // before we grab the list of pending items to upload.
+        await resetStuckUploading();
 
-    const result = await uploadAll();
+        result = await uploadAll();
+    } catch (err) {
+        console.error('Upload session crashed:', err);
+        appendLog('❌ System Error: ' + err.message, 'error');
+        alert('Upload failed to start: ' + err.message);
+    }
 
     // Reset UI
     uploadBtn.disabled = false;
