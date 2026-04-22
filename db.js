@@ -159,8 +159,12 @@ async function saveSubmission(payload, images) {
  */
 async function getPendingSubmissions() {
     const db = await openDB();
-    // Retrieve only 'pending' items using the status index to avoid OOM
-    return db.getAllFromIndex(STORE_NAME, 'status', 'pending');
+    // Retrieve both 'pending' and 'uploading' items
+    // If an item is stuck in 'uploading', we want to try uploading it again
+    // Server-side UUID detection prevents duplicate rows.
+    const pending = await db.getAllFromIndex(STORE_NAME, 'status', 'pending');
+    const uploading = await db.getAllFromIndex(STORE_NAME, 'status', 'uploading');
+    return pending.concat(uploading);
 }
 
 /**
@@ -202,7 +206,11 @@ async function updateSubmissionStatus(id, status, error) {
     if (error !== undefined) {
         record.error = error;
     }
-    await db.put(STORE_NAME, record);
+    try {
+        await db.put(STORE_NAME, record);
+    } catch (e) {
+        console.warn('Ignored IDB put error in updateSubmissionStatus:', e.message);
+    }
 }
 
 /**
@@ -337,8 +345,14 @@ async function resetStuckUploading() {
         record.error = null;
         tx.store.put(record);
     }
-    await tx.done;
-    console.log('[DB] Reset ' + stuck.length + ' stuck uploading entries to pending');
+    
+    try {
+        await tx.done;
+        console.log('[DB] Reset ' + stuck.length + ' stuck uploading entries to pending');
+    } catch (e) {
+        console.warn('[DB] Failed to reset stuck uploading entries:', e.message);
+    }
+    
     return stuck.length;
 }
 
