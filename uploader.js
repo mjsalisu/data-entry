@@ -529,7 +529,22 @@ async function broadcastCountdown(totalMs, reason) {
  * @returns {string} Highly visible actionable error string
  */
 function getUserFriendlyError(err) {
-    const errMsg = (err.message || err || 'Network error').toString();
+    // Extract a meaningful message from various error types:
+    // - Standard Error: err.message exists
+    // - ProgressEvent (from FileReader/XHR): no .message, toString() gives "[object ProgressEvent]"
+    // - DOMException: err.message exists
+    // - String: use directly
+    let errMsg;
+    if (err instanceof Error || (err && typeof err.message === 'string' && err.message)) {
+        errMsg = err.message;
+    } else if (typeof err === 'string') {
+        errMsg = err;
+    } else if (err && err.type) {
+        // ProgressEvent or similar DOM event — err.type is 'error', 'abort', etc.
+        errMsg = 'Network request failed (' + err.type + ')';
+    } else {
+        errMsg = 'Network error';
+    }
     const lowerMsg = errMsg.toLowerCase();
     
     let fixPhrase = "Tap 'Retry' later.";

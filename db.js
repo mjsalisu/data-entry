@@ -79,7 +79,7 @@ function blobToDataUrl(blob) {
         new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
-            reader.onerror = (e) => reject(e);
+            reader.onerror = () => reject(new Error('Image read failed — file may be corrupted or lost by iOS'));
             reader.readAsDataURL(blob);
         }),
         // Safety net: if FileReader never fires (dead Blob on iOS), resolve with '' after 10s
