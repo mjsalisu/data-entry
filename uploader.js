@@ -116,15 +116,18 @@ async function uploadAll() {
         console.warn(`Wake Lock try/catch failed: ${err.message}`);
     }
 
-    const pending = await getPendingSubmissions();
-    if (pending.length === 0) {
+    // Load ONLY IDs — not full records with multi-MB images.
+    // Each full record is fetched one-at-a-time inside the loop below,
+    // so only one record's images are in RAM at any given time.
+    const pendingIds = await getPendingSubmissionIds();
+    if (pendingIds.length === 0) {
         _uploading = false;
         broadcastMessage('upload_complete', { uploaded: 0, failed: 0, total: 0 });
         return { uploaded: 0, failed: 0, total: 0 };
     }
 
-    _uploadProgress = { current: 0, total: pending.length };
-    broadcastMessage('upload_started', { total: pending.length });
+    _uploadProgress = { current: 0, total: pendingIds.length };
+    broadcastMessage('upload_started', { total: pendingIds.length });
 
     // ── Initial jitter: short 500ms delay ──
     // Makes the progress UI feel natural and prevents instantaneous lockups
@@ -132,7 +135,7 @@ async function uploadAll() {
     console.log(`Starting uploads in ${(initialDelay / 1000).toFixed(1)}s...`);
     broadcastMessage('upload_progress', {
         current: 0,
-        total: pending.length,
+        total: pendingIds.length,
         entryId: null,
         entryName: 'Waiting...',
         status: 'scheduling'
@@ -143,7 +146,7 @@ async function uploadAll() {
     let failed = 0;
     let consecutiveFailures = 0;
 
-    for (const record of pending) {
+    for (const recordId of pendingIds) {
         // Check if paused
         if (_paused) {
             broadcastMessage('upload_paused', {
@@ -165,6 +168,16 @@ async function uploadAll() {
             await broadcastCountdown(longWait, 'Server is busy. Many users are uploading. Cooling down...');
 
             consecutiveFailures = 3; // Reset partially, don't fully reset
+        }
+
+        // ── Load ONE record at a time ──
+        // Only this single record's image blobs are in memory.
+        // After the iteration, `record` falls out of scope and is GC'd.
+        const record = await getSubmission(recordId);
+        if (!record) {
+            // Entry may have been deleted while we were uploading
+            _uploadProgress.current++;
+            continue;
         }
 
         _currentUploadId = record.id;
@@ -270,7 +283,7 @@ async function uploadAll() {
     const result = {
         uploaded,
         failed,
-        total: pending.length
+        total: pendingIds.length
     };
 
     broadcastMessage('upload_complete', result);

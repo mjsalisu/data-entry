@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Refresh the entire submission list from IndexedDB.
  */
 async function refreshList() {
-    _allEntries = await getAllSubmissions();
+    _allEntries = await getAllSubmissionsLight();
     await updateStats();
     renderList();
     updateControlsVisibility();
