@@ -7,6 +7,114 @@
 let DYNAMIC_FIELDS = {};
 
 // ─────────────────────────────────────────────
+// Upload Enforcement — Prevent Data Hoarding
+//
+// 3-layer system to pressure users into uploading:
+//  Layer 1: Eager auto-upload (upload each entry immediately if online)
+//  Layer 2: Nag banner (≥10 pending entries — persistent warning)
+//  Layer 3: Friction gate (≥30 pending entries — 5s countdown overlay)
+// ─────────────────────────────────────────────
+const NAG_THRESHOLD = 10;   // Show persistent warning banner
+const GATE_THRESHOLD = 30;  // Show friction gate overlay
+let _gateCountdownTimer = null;
+
+/**
+ * Check pending count and show nag banner or friction gate as needed.
+ * Called on page load, after each form save, and on "Enter Another Record".
+ */
+async function checkUploadEnforcement() {
+    let pendingCount = 0;
+    try {
+        pendingCount = await getPendingCount();
+    } catch (e) { return; }
+
+    const nagBanner = document.getElementById('uploadNagBanner');
+    const gateOverlay = document.getElementById('uploadGateOverlay');
+
+    // Layer 3: Friction gate (≥30)
+    if (pendingCount >= GATE_THRESHOLD) {
+        if (nagBanner) nagBanner.style.display = 'block';
+        const nagCount = document.getElementById('nagPendingCount');
+        if (nagCount) nagCount.textContent = pendingCount;
+
+        // Show the gate overlay with countdown
+        showUploadGate(pendingCount);
+        return;
+    }
+
+    // Hide gate if count dropped below threshold
+    if (gateOverlay) gateOverlay.style.display = 'none';
+
+    // Layer 2: Nag banner (≥10 and <30)
+    if (pendingCount >= NAG_THRESHOLD) {
+        if (nagBanner) {
+            nagBanner.style.display = 'block';
+            const nagCount = document.getElementById('nagPendingCount');
+            if (nagCount) nagCount.textContent = pendingCount;
+        }
+    } else {
+        if (nagBanner) nagBanner.style.display = 'none';
+    }
+}
+
+/**
+ * Show the friction gate overlay with a 5-second countdown.
+ * User must wait before they can dismiss and continue entering data.
+ */
+function showUploadGate(count) {
+    const gateOverlay = document.getElementById('uploadGateOverlay');
+    const skipBtn = document.getElementById('gateSkipBtn');
+    const countdownEl = document.getElementById('gateCountdown');
+    const countEl = document.getElementById('gatePendingCount');
+
+    if (!gateOverlay) return;
+
+    if (countEl) countEl.textContent = count;
+    gateOverlay.style.display = 'block';
+
+    // Reset countdown
+    if (_gateCountdownTimer) clearInterval(_gateCountdownTimer);
+    let remaining = 5;
+    if (skipBtn) {
+        skipBtn.disabled = true;
+        skipBtn.style.cursor = 'not-allowed';
+        skipBtn.style.color = '#999';
+        skipBtn.style.borderColor = '#ccc';
+        skipBtn.innerHTML = '⏳ Please wait <span id="gateCountdown">' + remaining + '</span>s...';
+    }
+
+    _gateCountdownTimer = setInterval(() => {
+        remaining--;
+        const cdEl = document.getElementById('gateCountdown');
+        if (cdEl) cdEl.textContent = remaining;
+
+        if (remaining <= 0) {
+            clearInterval(_gateCountdownTimer);
+            if (skipBtn) {
+                skipBtn.disabled = false;
+                skipBtn.style.cursor = 'pointer';
+                skipBtn.style.color = '#e65100';
+                skipBtn.style.borderColor = '#e65100';
+                skipBtn.innerHTML = '⚠️ I understand, let me enter one more';
+            }
+        }
+    }, 1000);
+}
+
+/**
+ * Dismiss the friction gate overlay (called from the skip button).
+ * Allows the user to enter one more record before the gate re-appears.
+ */
+function dismissUploadGate() {
+    const gateOverlay = document.getElementById('uploadGateOverlay');
+    if (gateOverlay) gateOverlay.style.display = 'none';
+    if (_gateCountdownTimer) {
+        clearInterval(_gateCountdownTimer);
+        _gateCountdownTimer = null;
+    }
+}
+
+// ─────────────────────────────────────────────
 // Cascading Dropdown Logic
 // ─────────────────────────────────────────────
 
@@ -915,6 +1023,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // ── Check upload enforcement on page load ──
+    checkUploadEnforcement();
+
     // ── Form Submit Handler ──
     form.addEventListener('submit', function (event) {
         event.preventDefault();
@@ -1079,12 +1190,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     broadcastMessage('entry_saved', { id: result.id, uuid: result.uuid });
 
                     // ── Auto-upload if online ──
-                    // If the user has internet, start background upload immediately
-                    // No need to visit the queue page — it just happens
-                    if (navigator.onLine && typeof uploadAll === 'function' && !isUploading()) {
-                        console.log('[AutoSync] Entry saved while online — starting background upload');
-                        uploadAll(); // runs async, doesn't block the UI
+                    // Immediately upload THIS entry in the background.
+                    // Uses uploadSingle so it doesn't interfere with a running batch.
+                    if (navigator.onLine && typeof uploadSingle === 'function') {
+                        console.log('[AutoSync] Entry saved while online — uploading entry', result.id);
+                        uploadSingle(result.id); // runs async, doesn't block the UI
                     }
+
+                    // ── Check upload enforcement (nag / gate) ──
+                    checkUploadEnforcement();
 
                     // Re-trigger the SVG animation by cloning and replacing the SVG
                     const svg = successScreen.querySelector('.success-checkmark svg');
@@ -1139,6 +1253,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Update badge
             await updateQueueBadge();
+
+            // ── Check upload enforcement before allowing another entry ──
+            await checkUploadEnforcement();
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });

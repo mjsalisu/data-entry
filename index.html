@@ -24,6 +24,42 @@
             <h2 class="text-center text-primary">Jobberman BCWS Data Entry</h2>
             <p class="text-center text-primary mb-4">Building Careers for Workplace Success</p>
 
+            <!-- Upload Nag Banner (shown when 10-29 entries pending) -->
+            <div id="uploadNagBanner" style="display:none;">
+              <div style="background:linear-gradient(135deg,#e65100,#bf360c);color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:16px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 12px rgba(230,81,0,0.3);">
+                <span style="font-size:1.5rem;">⚠️</span>
+                <div style="flex:1;">
+                  <strong>Upload your entries!</strong><br>
+                  <span style="font-size:0.82rem;opacity:0.95;">You have <strong id="nagPendingCount">0</strong> entries waiting on this device. Connect to internet and <a href="queue.html" style="color:#fff;text-decoration:underline;font-weight:700;">upload now →</a></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload Friction Gate (shown when ≥30 entries pending — heavy friction) -->
+            <div id="uploadGateOverlay" style="display:none;">
+              <div style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;">
+                <div style="background:#fff;border-radius:16px;max-width:400px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:gate-pop 0.3s ease-out;">
+                  <div style="font-size:3rem;margin-bottom:8px;">🚨</div>
+                  <h3 style="color:#c62828;font-weight:800;margin-bottom:8px;">Upload Required</h3>
+                  <p style="color:#555;font-size:0.9rem;margin-bottom:4px;">
+                    You have <strong id="gatePendingCount" style="color:#c62828;font-size:1.3rem;">0</strong> entries stored on this device.
+                  </p>
+                  <p style="color:#888;font-size:0.82rem;margin-bottom:20px;">
+                    Data on your phone is at risk of loss. Upload now to secure it in the system.
+                  </p>
+                  <a href="queue.html" style="display:block;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;margin-bottom:12px;box-shadow:0 4px 16px rgba(21,101,192,0.4);">
+                    📤 Go to Upload Queue
+                  </a>
+                  <button id="gateSkipBtn" disabled onclick="dismissUploadGate()" style="background:none;border:2px solid #ccc;color:#999;padding:10px 20px;border-radius:10px;font-size:0.82rem;width:100%;cursor:not-allowed;transition:all 0.3s;">
+                    ⏳ Please wait <span id="gateCountdown">5</span>s...
+                  </button>
+                  <p style="color:#bbb;font-size:0.72rem;margin-top:12px;margin-bottom:0;">
+                    Entries are only safe once uploaded to the server.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <form id="dataForm" class="needs-validation" novalidate>
 
               <!-- Floating Draft Save Indicator (Google Forms style) -->
