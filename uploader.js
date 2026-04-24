@@ -218,6 +218,9 @@ async function uploadAll() {
             // Server-side LockService + UUID duplicate detection ensure safe writes
             // We now mark as 'uploaded'. User must run "Verify" to upgrade to 'confirmed'.
             await updateSubmissionStatus(record.id, 'uploaded', null);
+
+            // KPI Tracker hook
+            if (typeof trackEntryUploaded === 'function') trackEntryUploaded();
             
             // ── Track Monthly Stats ──
             try {
@@ -326,6 +329,9 @@ async function uploadSingle(id) {
 
         // POST succeeded — mark as confirmed immediately
         await updateSubmissionStatus(id, 'confirmed', null);
+
+        // KPI Tracker hook
+        if (typeof trackEntryUploaded === 'function') trackEntryUploaded();
 
         broadcastMessage('entry_updated', { entryId: id, status: 'confirmed' });
         return true;

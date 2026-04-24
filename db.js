@@ -363,3 +363,105 @@ async function resetStuckUploading() {
 
 // migrateBlobsToBase64 function removed as all entries are now base64.
 
+// ─────────────────────────────────────────────
+// KPI Tracking Module
+// ─────────────────────────────────────────────
+
+/**
+ * Initialize KPI Tracker.
+ * Checks if the configured ACTIVE_PERIOD.id matches the local storage.
+ * If not, it wipes uploaded/confirmed entries and resets counters.
+ */
+async function initKPI() {
+    if (typeof ACTIVE_PERIOD === 'undefined') return;
+    
+    const periodId = ACTIVE_PERIOD.id;
+    let stored = localStorage.getItem('kpi_period_id');
+    
+    if (stored !== periodId) {
+        console.log('[KPI] New period detected. Resetting KPI counters and clearing uploaded/confirmed entries.');
+        
+        // Reset KPIs
+        localStorage.setItem('kpi_period_id', periodId);
+        localStorage.setItem('kpi_total_recorded', '0');
+        localStorage.setItem('kpi_total_uploaded', '0');
+        localStorage.setItem('kpi_total_time_ms', '0');
+        localStorage.setItem('kpi_time_entries_count', '0');
+        
+        // Wipe uploaded and confirmed entries from IDB
+        try {
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            
+            const uploadedKeys = await tx.store.index('status').getAllKeys('uploaded');
+            const confirmedKeys = await tx.store.index('status').getAllKeys('confirmed');
+            const allKeys = [...uploadedKeys, ...confirmedKeys];
+            
+            for (const key of allKeys) {
+                tx.store.delete(key);
+            }
+            await tx.done;
+            console.log('[KPI] Cleared ' + allKeys.length + ' old entries from the previous period.');
+        } catch (e) {
+            console.warn('[KPI] Failed to clear old entries:', e);
+        }
+        
+        // Refresh UI if functions are available
+        if (typeof updateStats === 'function') updateStats();
+        if (typeof refreshList === 'function') refreshList();
+    }
+}
+
+/** Called in app.js when form opens/resets */
+function trackFormStart() {
+    sessionStorage.setItem('form_start_ms', Date.now().toString());
+}
+
+/** Called in app.js when form is saved to IDB */
+function trackFormSaved() {
+    let current = parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10);
+    localStorage.setItem('kpi_total_recorded', (current + 1).toString());
+    
+    let startMs = sessionStorage.getItem('form_start_ms');
+    if (startMs) {
+        let diff = Date.now() - parseInt(startMs, 10);
+        // Only count if diff is reasonable (between 5 seconds and 1 hour)
+        if (diff > 5000 && diff < 3600000) {
+            let totalTime = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
+            let count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
+            localStorage.setItem('kpi_total_time_ms', (totalTime + diff).toString());
+            localStorage.setItem('kpi_time_entries_count', (count + 1).toString());
+        }
+    }
+}
+
+/** Called in uploader.js when an entry is successfully POSTed */
+function trackEntryUploaded() {
+    let current = parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10);
+    localStorage.setItem('kpi_total_uploaded', (current + 1).toString());
+}
+
+/** Get structured KPI data for the UI */
+function getKPIStats() {
+    const total_time_ms = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
+    const count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
+    
+    let avg_time_sec = 0;
+    if (count > 0) {
+        avg_time_sec = Math.round((total_time_ms / count) / 1000);
+    }
+    
+    let avg_time_str = '0s';
+    if (avg_time_sec > 0) {
+        let m = Math.floor(avg_time_sec / 60);
+        let s = avg_time_sec % 60;
+        avg_time_str = m > 0 ? m + 'm ' + s + 's' : s + 's';
+    }
+
+    return {
+        recorded: parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10),
+        uploaded: parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10),
+        avgTime: avg_time_str,
+        periodName: typeof ACTIVE_PERIOD !== 'undefined' ? ACTIVE_PERIOD.name : 'Unknown'
+    };
+}

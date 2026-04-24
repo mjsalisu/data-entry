@@ -1,6 +1,15 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzWY1GAoZz4e3PwTnABr2eJ98rz3iIrtwiMOo7gvnFG62aAQIo82EXCViQtATeK_woE/exec";
 
 /**
+ * Active KPI Data Range.
+ * Changing the 'id' will automatically clear users' "Uploaded" entries and reset their local KPI counters.
+ */
+const ACTIVE_PERIOD = {
+    id: "2026-04-21_2026-05-20",
+    name: "April - May",
+    description: "21st April to 20th May"
+};
+/**
  * State code abbreviations for Certificate ID formatting.
  * Certificate ID format: SC/PT/7-digit-code
  * SC = State Code, PT = Physical Training (constant).

@@ -18,6 +18,12 @@ let _uploadLog = []; // In-session upload log lines
 // ─────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // ── Check if we need to start a new KPI tracking period ──
+    if (typeof initKPI === 'function') await initKPI();
+
+    // Re-enable queue processing for entries that were "uploading" when page closed
+    const resetCount = await resetStuckUploading();
+
     // Update network status
     updateNetworkStatus();
     window.addEventListener('online', () => { updateNetworkStatus(); refreshList(); });
@@ -177,16 +183,16 @@ async function updateStats() {
         btnCount.textContent = counts.pending > 0 ? counts.pending : '';
     }
 
-    // Update Monthly Stats Tracker
+    // Update KPI Stats Tracker
     try {
-        const monthKey = new Date().toISOString().slice(0, 7); // e.g., "2026-04"
-        const stats = JSON.parse(localStorage.getItem('monthly_upload_stats') || '{}');
-        const monthCount = stats[monthKey] || 0;
-        const monthlyStatsEl = document.getElementById('monthlyUploadsCount');
-        if (monthlyStatsEl) {
-            monthlyStatsEl.textContent = monthCount.toLocaleString();
+        if (typeof getKPIStats === 'function') {
+            const kpi = getKPIStats();
+            document.getElementById('kpiPeriodLabel').textContent = `📊 Uploads for ${kpi.periodName}`;
+            document.getElementById('kpiRecorded').textContent = kpi.recorded.toLocaleString();
+            document.getElementById('kpiUploaded').textContent = kpi.uploaded.toLocaleString();
+            document.getElementById('kpiAvgTime').textContent = kpi.avgTime;
         }
-    } catch (e) { }
+    } catch (e) { console.error('[KPI UI Error]', e); }
 }
 
 /**

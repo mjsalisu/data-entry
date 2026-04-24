@@ -68,10 +68,23 @@
       </div>
     </div>
 
-    <!-- Monthly Stats Tracker -->
-    <div class="monthly-stats-box" id="monthlyStatsBox">
-      <div class="stats-label">📊 Uploads this Month</div>
-      <div class="stats-count" id="monthlyUploadsCount">0</div>
+    <!-- KPI Stats Tracker -->
+    <div class="monthly-stats-box" id="kpiStatsBox">
+      <div class="stats-label" id="kpiPeriodLabel" style="margin-bottom: 8px;">📊 KPI Period</div>
+      <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 5px;">
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Recorded</div>
+          <div id="kpiRecorded" style="font-weight: 700; font-size: 1.1rem; color: #1565c0;">0</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Uploaded</div>
+          <div id="kpiUploaded" style="font-weight: 700; font-size: 1.1rem; color: #2e7d32;">0</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Avg Time</div>
+          <div id="kpiAvgTime" style="font-weight: 700; font-size: 1.1rem; color: #e65100;">0s</div>
+        </div>
+      </div>
     </div>
 
     <!-- Upload Controls -->

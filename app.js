@@ -888,6 +888,10 @@ function enforceUnfilledExclusivity(changedCb) {
 // DOMContentLoaded — Wire everything up
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+    // ── Initialize KPI Tracker & Track Form Start ──
+    if (typeof initKPI === 'function') await initKPI();
+    if (typeof trackFormStart === 'function') trackFormStart();
+
     const form = document.getElementById('dataForm');
     if (!form) return;
 
@@ -1167,6 +1171,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Clear draft on successful save
                     localStorage.removeItem(DRAFT_KEY);
 
+                    // Track KPI metrics
+                    if (typeof trackFormSaved === 'function') trackFormSaved();
+
                     // Increment session save counter
                     const SESSION_COUNT_KEY = 'jobberman_submission_count';
                     let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
@@ -1242,6 +1249,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Reset the form
             discardDraft();
+
+            // Track start time for the next entry
+            if (typeof trackFormStart === 'function') trackFormStart();
 
             // Re-enable submit button
             const subBtn = document.getElementById('subBtn');
