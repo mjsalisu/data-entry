@@ -330,6 +330,7 @@ async function handleUploadAll() {
     uploadBtn.disabled = false;
     uploadBtn.querySelector('.btn-text').textContent = 'Upload All';
     pauseBtn.style.display = 'none';
+    progressContainer.style.display = 'none';
 
     if (result) {
         await refreshList();
@@ -338,14 +339,12 @@ async function handleUploadAll() {
         if (result.failed === 0 && result.uploaded > 0) {
             appendLog('✅ All ' + result.uploaded + ' entries uploaded successfully!', 'success');
             showNotification('✅ All ' + result.uploaded + ' entries uploaded successfully!');
-            progressContainer.style.display = 'none';
         } else if (result.failed > 0) {
             appendLog('⚠️ Session ended: ' + result.uploaded + ' uploaded, ' + result.failed + ' failed.', 'warn');
             showNotification('⚠️ ' + result.uploaded + ' uploaded, ' + result.failed + ' failed. Tap "Retry Failed" to try again.');
         } else {
             appendLog('ℹ️ No pending entries found.', 'info');
             showNotification('No pending entries to upload.');
-            progressContainer.style.display = 'none';
         }
     }
 }

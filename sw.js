@@ -16,7 +16,7 @@
  *     and the page reloads with fresh files.
  */
 
-const CACHE_VERSION = 'dataentry-v1.9.2';
+const CACHE_VERSION = 'dataentry-v1.9.0.3';
 const APP_SHELL = [
     './',
     './index.html',
@@ -31,12 +31,12 @@ const APP_SHELL = [
     './style.css',
     './queue.css',
     './dist/css/bootstrap.min.css',
-    './dist/js/bootstrap.bundle.min.js'
+    './dist/js/bootstrap.bundle.min.js',
+    './dist/js/idb.umd.js'
 ];
 
 // External CDN — cache on first use
 const CDN_URLS = [
-    'https://cdn.jsdelivr.net/npm/idb@8/build/umd.js'
 ];
 
 /**
