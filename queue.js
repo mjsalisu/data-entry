@@ -289,6 +289,12 @@ async function handleUploadAll() {
         return;
     }
 
+    const counts = await getStatusCounts();
+    if (counts.pending > 35) {
+        const proceed = confirm(`You are about to upload ${counts.pending} entries.\n\nIMPORTANT: This may take several minutes. Please plug in your device and keep your screen turned ON until it finishes. If the screen turns off, the upload may pause.\n\nProceed?`);
+        if (!proceed) return;
+    }
+
     const uploadBtn = document.getElementById('uploadAllBtn');
     const pauseBtn = document.getElementById('pauseBtn');
     const progressContainer = document.getElementById('progressContainer');

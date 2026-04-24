@@ -1369,10 +1369,10 @@ function showSyncToast(text, type) {
     // Style by type
     const styles = {
         uploading: 'background:#1565c0;color:#fff;',
-        progress:  'background:#1565c0;color:#fff;',
-        done:      'background:#2e7d32;color:#fff;',
-        warning:   'background:#e65100;color:#fff;',
-        waiting:   'background:#f57c00;color:#fff;'
+        progress: 'background:#1565c0;color:#fff;',
+        done: 'background:#2e7d32;color:#fff;',
+        warning: 'background:#e65100;color:#fff;',
+        waiting: 'background:#f57c00;color:#fff;'
     };
     toast.style.cssText = toast.style.cssText.replace(/background:[^;]+;color:[^;]+;/g, '');
     toast.style.cssText += styles[type] || styles.uploading;

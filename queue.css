@@ -153,12 +153,13 @@
 .monthly-stats-box {
   margin: 0 16px 12px;
   background: rgba(255, 255, 255, 0.03);
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-radius: 10px;
   border: 1px dashed rgba(100, 181, 246, 0.3);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
 }
 .monthly-stats-box .stats-label {
   font-size: 0.85rem;

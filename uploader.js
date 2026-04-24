@@ -221,14 +221,14 @@ async function uploadAll() {
 
             // KPI Tracker hook
             if (typeof trackEntryUploaded === 'function') trackEntryUploaded();
-            
+
             // ── Track Monthly Stats ──
             try {
                 const monthKey = new Date().toISOString().slice(0, 7); // e.g., "2026-04"
                 let stats = JSON.parse(localStorage.getItem('monthly_upload_stats') || '{}');
                 stats[monthKey] = (stats[monthKey] || 0) + 1;
                 localStorage.setItem('monthly_upload_stats', JSON.stringify(stats));
-            } catch(e) {}
+            } catch (e) { }
 
             uploaded++;
             consecutiveFailures = 0;
@@ -291,7 +291,7 @@ async function uploadAll() {
             _wakeLock.release();
             _wakeLock = null;
             console.log('Wake Lock released.');
-        } catch (e) {}
+        } catch (e) { }
     }
 
     return result;
@@ -459,7 +459,7 @@ document.addEventListener('visibilitychange', async () => {
             if ('wakeLock' in navigator && _wakeLock === null) {
                 _wakeLock = await navigator.wakeLock.request('screen');
             }
-        } catch (err) {}
+        } catch (err) { }
     } else if (document.visibilityState === 'hidden' && _uploading) {
         // iOS freezes JS here. Show a toast if we had a way, or just accept the pause.
         console.warn('App went to background! Uploads may be suspended by iOS.');
@@ -493,10 +493,16 @@ async function fetchWithRetry(url, options, maxAttempts) {
 
     let lastError;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout per attempt
+
         try {
+            options.signal = controller.signal;
             const response = await fetch(url, options);
+            clearTimeout(timeoutId);
             return response;
         } catch (err) {
+            clearTimeout(timeoutId);
             lastError = err;
             console.warn(`Fetch attempt ${attempt}/${maxAttempts} failed:`, err.message);
 
@@ -559,9 +565,9 @@ function getUserFriendlyError(err) {
         errMsg = 'Network error';
     }
     const lowerMsg = errMsg.toLowerCase();
-    
+
     let fixPhrase = "Tap 'Retry' later.";
-    
+
     if (lowerMsg.includes('network') || lowerMsg.includes('fetch') || lowerMsg.includes('load failed') || lowerMsg.includes('offline') || lowerMsg.includes('internet')) {
         fixPhrase = "Connect to better WiFi/Cellular data and tap Retry.";
     } else if (lowerMsg.includes('timeout')) {
@@ -572,3 +578,26 @@ function getUserFriendlyError(err) {
 
     return errMsg + " (Fix: " + fixPhrase + ")";
 }
+
+// ─────────────────────────────────────────────
+// Auto-Sync Stragglers (Ghost Pending Fix)
+// ─────────────────────────────────────────────
+// If the user navigates away from the form too quickly, `uploadSingle` is aborted,
+// leaving the local entry stuck in 'pending' even if the server received it.
+// This auto-sync silently processes a small number of pending items in the background
+// when the app loads, ensuring the local database reaches the 'uploaded' state seamlessly.
+setTimeout(async () => {
+    if (navigator.onLine && !_uploading && typeof getPendingSubmissionIds === 'function') {
+        try {
+            const pendingIds = await getPendingSubmissionIds();
+            // Only auto-sync if there are 15 or fewer stragglers (don't lock up device for huge offline batches)
+            if (pendingIds.length > 0 && pendingIds.length <= 15) {
+                console.log(`[AutoSync] Background syncing ${pendingIds.length} straggler(s)...`);
+                // Trigger the main upload loop (it automatically skips duplicates on the server)
+                uploadAll();
+            }
+        } catch (e) {
+            console.error('[AutoSync] Failed to check pending count:', e);
+        }
+    }
+}, 4000); // Wait 4 seconds to let the UI finish rendering first
