@@ -1224,14 +1224,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
                 .catch(err => {
                     console.error('[saveSubmission error]', err);
-                    alert('Error saving locally: ' + err.message);
+                    alert(`[ERR_IDB_SAVE] Error saving entry to local database:\n${err.message}\n\nDiag: If this persists, check if your device storage is full or if the browser is blocking offline data.`);
                     subBtn.disabled = false;
                     subBtn.innerHTML = '💾 Save Entry';
                     loader.style.display = 'none';
                 });
         } catch (syncErr) {
             console.error('[Sync Mapping Error]', syncErr);
-            alert('A critical error occurred processing the form: ' + syncErr.message);
+            alert(`[ERR_FORM_PROCESS] A critical error occurred while gathering form data:\n${syncErr.message}\n\nDiag: Check for missing or invalid fields, or try refreshing the page.`);
             subBtn.disabled = false;
             subBtn.innerHTML = '💾 Save Entry';
             loader.style.display = 'none';

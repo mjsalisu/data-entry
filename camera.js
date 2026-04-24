@@ -23,7 +23,7 @@ function handleFileSelect(type, fileInput) {
 
     // Validate that it's an image
     if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file.');
+        alert('[ERR_INVALID_IMAGE] Please select a valid image file (JPG, PNG).');
         fileInput.value = '';
         return;
     }

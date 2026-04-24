@@ -285,7 +285,7 @@ function updateNetworkStatus() {
 
 async function handleUploadAll() {
     if (!navigator.onLine) {
-        alert('You are currently offline. Please connect to the internet to upload.');
+        alert('[ERR_OFFLINE] You are currently offline.\n\nDiag: Please connect to the internet (WiFi or Mobile Data) to upload.');
         return;
     }
 
@@ -321,8 +321,9 @@ async function handleUploadAll() {
         result = await uploadAll();
     } catch (err) {
         console.error('Upload session crashed:', err);
-        appendLog('❌ System Error: ' + err.message, 'error');
-        alert('Upload failed to start: ' + err.message);
+        const errMsg = `[ERR_UPLOAD_INIT] Upload sequence crashed:\n${err.message}`;
+        appendLog(`❌ ${errMsg}`, 'error');
+        alert(`${errMsg}\n\nDiag: Please refresh the page. If the issue persists, clear the app cache.`);
     }
 
     // Reset UI
@@ -401,10 +402,10 @@ async function handleVerifyAll() {
         return;
     }
 
-    // Get all entries that should be in the sheet
-    const entries = _allEntries.filter(e => e.status === 'confirmed' || e.status === 'uploaded');
+    // Get all entries that have NOT been verified yet
+    const entries = _allEntries.filter(e => e.status !== 'confirmed');
     if (entries.length === 0) {
-        showNotification('No uploaded entries to verify.');
+        showNotification('All your entries are already verified!');
         return;
     }
 
@@ -430,10 +431,8 @@ async function handleVerifyAll() {
             if (data.found) {
                 found++;
                 results.push({ name: entry.payload.name || 'Unknown', status: 'found', id: entry.id });
-                // Update status to confirmed if it was just 'uploaded'
-                if (entry.status === 'uploaded') {
-                    await updateSubmissionStatus(entry.id, 'confirmed', null);
-                }
+                // If it was found in the sheet, upgrade it to 'confirmed' regardless of local state
+                await updateSubmissionStatus(entry.id, 'confirmed', null);
             } else {
                 notFound++;
                 results.push({ name: entry.payload.name || 'Unknown', status: 'not_found', id: entry.id });

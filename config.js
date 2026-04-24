@@ -6,8 +6,8 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzWY1GAoZz4e3PwTnABr
  */
 const ACTIVE_PERIOD = {
     id: "2026-04-21_2026-05-20",
-    name: "April - May",
-    description: "21st April to 20th May"
+    name: "21st April to 20th May",
+    description: "Payment Cycle"
 };
 /**
  * State code abbreviations for Certificate ID formatting.

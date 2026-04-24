@@ -548,35 +548,39 @@ async function broadcastCountdown(totalMs, reason) {
  * @returns {string} Highly visible actionable error string
  */
 function getUserFriendlyError(err) {
-    // Extract a meaningful message from various error types:
-    // - Standard Error: err.message exists
-    // - ProgressEvent (from FileReader/XHR): no .message, toString() gives "[object ProgressEvent]"
-    // - DOMException: err.message exists
-    // - String: use directly
     let errMsg;
+    let errCode = 'ERR_UNKNOWN';
+
     if (err instanceof Error || (err && typeof err.message === 'string' && err.message)) {
         errMsg = err.message;
+        if (err.name === 'AbortError') errCode = 'ERR_TIMEOUT';
+        else if (err.name === 'TypeError') errCode = 'ERR_TYPE';
+        else errCode = 'ERR_GENERAL';
     } else if (typeof err === 'string') {
         errMsg = err;
+        errCode = 'ERR_STRING';
     } else if (err && err.type) {
-        // ProgressEvent or similar DOM event — err.type is 'error', 'abort', etc.
-        errMsg = 'Network request failed (' + err.type + ')';
+        errMsg = `Network request failed (Event: ${err.type})`;
+        errCode = 'ERR_NET_EVENT';
     } else {
-        errMsg = 'Network error';
+        errMsg = 'An unexpected network error occurred.';
     }
     const lowerMsg = errMsg.toLowerCase();
 
     let fixPhrase = "Tap 'Retry' later.";
 
     if (lowerMsg.includes('network') || lowerMsg.includes('fetch') || lowerMsg.includes('load failed') || lowerMsg.includes('offline') || lowerMsg.includes('internet')) {
-        fixPhrase = "Connect to better WiFi/Cellular data and tap Retry.";
-    } else if (lowerMsg.includes('timeout')) {
-        fixPhrase = "Server is lagging. Wait a few mins, change network, and Retry.";
-    } else if (lowerMsg.includes('too large') || lowerMsg.includes('quota')) {
-        fixPhrase = "File might be too large or quota hit. Clear cache and restart.";
+        fixPhrase = "Check WiFi/Cellular data. Device may be dropping packets.";
+        if (errCode === 'ERR_UNKNOWN') errCode = 'ERR_NETWORK_DISCONNECT';
+    } else if (lowerMsg.includes('timeout') || errCode === 'ERR_TIMEOUT') {
+        fixPhrase = "Server response took >30s. Connection is extremely slow or dropping.";
+        errCode = 'ERR_TIMEOUT';
+    } else if (lowerMsg.includes('too large') || lowerMsg.includes('quota') || lowerMsg.includes('payload')) {
+        fixPhrase = "Image snapshots are too large. Try reducing camera resolution.";
+        errCode = 'ERR_PAYLOAD_SIZE';
     }
 
-    return errMsg + " (Fix: " + fixPhrase + ")";
+    return `[${errCode}] ${errMsg} \n(Diag: ${fixPhrase})`;
 }
 
 // ─────────────────────────────────────────────
