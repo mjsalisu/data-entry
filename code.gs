@@ -2,13 +2,21 @@
  * Handles incoming data from the external HTML form (Jobberman SST Data Entry)
  * Sheet: BCWS_Data
  *
- * appendRow() is inherently atomic in Google Sheets, so no LockService
- * is needed. UUID-based duplicate detection prevents re-writes when
- * clients retry. LockService was removed to avoid quota errors
- * ("too many LockService operations") under high concurrency (200+ users).
+ * LockService is enabled to serialize requests and prevent Google Drive
+ * concurrency issues ("Service error: Drive") when creating folders and files
+ * during high user load.
  */
 
 function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // Wait up to 30 seconds for other processes to finish
+  } catch (lockError) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", error: "System busy. Please try again later." }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('BCWS_Data') || ss.insertSheet('BCWS_Data');
 
@@ -38,23 +46,34 @@ function doPost(e) {
     // 2. Google Drive Image Uploads (PreTest & PostTest)
     //    Done OUTSIDE the lock — Drive writes don't conflict with Sheet writes
     // ─────────────────────────────────────────────
+    // Helper to get or create folder with exponential backoff retry to handle "Service error: Drive"
+    function getOrCreateFolder(parent, folderName, isRoot) {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          let folders = isRoot ? DriveApp.getFoldersByName(folderName) : parent.getFoldersByName(folderName);
+          if (folders.hasNext()) return folders.next();
+          return isRoot ? DriveApp.createFolder(folderName) : parent.createFolder(folderName);
+        } catch (e) {
+          if (attempt === 3) throw e;
+          Utilities.sleep(1000 * Math.pow(2, attempt) + Math.random() * 1000);
+        }
+      }
+    }
+
     // Root folder
     const rootFolderName = "Participant_Snapshots";
-    let rootFolders = DriveApp.getFoldersByName(rootFolderName);
-    let rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(rootFolderName);
+    let rootFolder = getOrCreateFolder(null, rootFolderName, true);
 
     // Month subfolder (e.g. "March_2026")
     const months = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
     const now = new Date();
     const monthFolderName = months[now.getMonth()] + '_' + now.getFullYear();
-    let monthFolders = rootFolder.getFoldersByName(monthFolderName);
-    let monthFolder = monthFolders.hasNext() ? monthFolders.next() : rootFolder.createFolder(monthFolderName);
+    let monthFolder = getOrCreateFolder(rootFolder, monthFolderName, false);
 
     // State subfolder (e.g. "Kano")
     const stateName = (data.state || 'Unknown_State').trim();
-    let stateFolders = monthFolder.getFoldersByName(stateName);
-    let folder = stateFolders.hasNext() ? stateFolders.next() : monthFolder.createFolder(stateName);
+    let folder = getOrCreateFolder(monthFolder, stateName, false);
 
     const participantName = (data.name || 'Unknown').replace(/\s+/g, '_');
     const timestamp = new Date().getTime();
@@ -172,11 +191,24 @@ function doPost(e) {
   } catch (err) {
     // Log errors to a separate 'Errors' sheet for debugging
     const errSheet = ss.getSheetByName('Errors') || ss.insertSheet('Errors');
-    errSheet.appendRow([new Date(), err.toString(), e.postData.contents]);
+    
+    let errorPayload = e.postData && e.postData.contents ? e.postData.contents : "";
+    try {
+      let parsedPayload = JSON.parse(errorPayload);
+      delete parsedPayload.image_pretest;
+      delete parsedPayload.image_posttest;
+      errorPayload = JSON.stringify(parsedPayload);
+    } catch (parseErr) {
+      // If it fails to parse, leave as original string
+    }
+
+    errSheet.appendRow([new Date(), err.toString(), errorPayload]);
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
 
