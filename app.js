@@ -1108,11 +1108,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!checkboxNames.has(k)) payload[k] = v;
         });
 
-        // ── Certificate ID: concatenate SC/PT/digits ──
-        if (payload.certificate_id && payload.certificate_id !== 'NA') {
+        // ── Certificate ID: concatenate SC/PT/digits (or SC/PT/NA) ──
+        if (payload.certificate_id) {
             const stateVal = payload.state || '';
             const stateCode = (typeof STATE_CODES !== 'undefined' && STATE_CODES[stateVal]) ? STATE_CODES[stateVal] : '??';
-            payload.certificate_id = stateCode + '/PT/' + payload.certificate_id;
+            // Force NA to be uppercase just in case
+            if (payload.certificate_id.toUpperCase() === 'NA') {
+                payload.certificate_id = stateCode + '/PT/NA';
+            } else {
+                payload.certificate_id = stateCode + '/PT/' + payload.certificate_id;
+            }
         }
 
         // ── Merge "Other" text inputs into parent fields ──
