@@ -79,7 +79,7 @@ function doPost(e) {
     const timestamp = new Date().getTime();
 
     function uploadImage(base64String, label) {
-      if (!base64String || base64String.trim() === '') return { url: '', path: '' };
+      if (!base64String || typeof base64String !== 'string' || base64String.trim() === '') return { url: '', path: '' };
       try {
         const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
         const bytes = Utilities.base64Decode(base64String.split(",")[1]);

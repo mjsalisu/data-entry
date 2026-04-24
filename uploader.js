@@ -199,11 +199,14 @@ async function uploadAll() {
                 throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
             }
 
+            const pretestData = await blobToBase64(record.pretestBlob);
+            const posttestData = await blobToBase64(record.posttestBlob);
+
             // Build the full payload with images
             const fullPayload = {
                 ...record.payload,
-                image_pretest: record.pretestBlob,
-                image_posttest: record.posttestBlob,
+                image_pretest: pretestData,
+                image_posttest: posttestData,
                 uuid: record.uuid
             };
 
@@ -314,10 +317,13 @@ async function uploadSingle(id) {
             throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
         }
 
+        const pretestData = await blobToBase64(record.pretestBlob);
+        const posttestData = await blobToBase64(record.posttestBlob);
+
         const fullPayload = {
             ...record.payload,
-            image_pretest: record.pretestBlob,
-            image_posttest: record.posttestBlob,
+            image_pretest: pretestData,
+            image_posttest: posttestData,
             uuid: record.uuid
         };
 
@@ -581,6 +587,25 @@ function getUserFriendlyError(err) {
     }
 
     return `[${errCode}] ${errMsg} \n(Diag: ${fixPhrase})`;
+}
+
+/**
+ * Converts a Blob to a base64 string.
+ * Used for legacy entries that were saved before the base64 migration.
+ * @param {Blob|string} blob
+ * @returns {Promise<string>}
+ */
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        if (!(blob instanceof Blob)) {
+            resolve(blob);
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 // ─────────────────────────────────────────────

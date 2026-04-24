@@ -16,7 +16,7 @@
  *     and the page reloads with fresh files.
  */
 
-const CACHE_VERSION = 'dataentry-v1.9.0.4';
+const CACHE_VERSION = 'dataentry-v1.9.0.5';
 const APP_SHELL = [
     './',
     './index.html',
