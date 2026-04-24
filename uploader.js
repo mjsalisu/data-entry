@@ -195,27 +195,15 @@ async function uploadAll() {
             // Mark as uploading
             await updateSubmissionStatus(record.id, 'uploading', null);
 
-            // Convert Blobs back to data URLs for the existing endpoint.
-            // If image read fails (dead iOS Blob, corruption), skip images
-            // and upload text data anyway — data is more important than photos.
-            let pretestDataUrl = '';
-            let posttestDataUrl = '';
-            try {
-                pretestDataUrl = await blobToDataUrl(record.pretestBlob);
-            } catch (imgErr) {
-                console.warn('[Upload] Pretest image unreadable for entry', record.id, '— uploading without it.');
-            }
-            try {
-                posttestDataUrl = await blobToDataUrl(record.posttestBlob);
-            } catch (imgErr) {
-                console.warn('[Upload] Posttest image unreadable for entry', record.id, '— uploading without it.');
+            if (!record.pretestBlob || !record.posttestBlob) {
+                throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
             }
 
             // Build the full payload with images
             const fullPayload = {
                 ...record.payload,
-                image_pretest: pretestDataUrl,
-                image_posttest: posttestDataUrl,
+                image_pretest: record.pretestBlob,
+                image_posttest: record.posttestBlob,
                 uuid: record.uuid
             };
 
@@ -319,23 +307,14 @@ async function uploadSingle(id) {
     try {
         await updateSubmissionStatus(id, 'uploading', null);
 
-        let pretestDataUrl = '';
-        let posttestDataUrl = '';
-        try {
-            pretestDataUrl = await blobToDataUrl(record.pretestBlob);
-        } catch (imgErr) {
-            console.warn('[Upload] Pretest image unreadable for entry', id, '— uploading without it.');
-        }
-        try {
-            posttestDataUrl = await blobToDataUrl(record.posttestBlob);
-        } catch (imgErr) {
-            console.warn('[Upload] Posttest image unreadable for entry', id, '— uploading without it.');
+        if (!record.pretestBlob || !record.posttestBlob) {
+            throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
         }
 
         const fullPayload = {
             ...record.payload,
-            image_pretest: pretestDataUrl,
-            image_posttest: posttestDataUrl,
+            image_pretest: record.pretestBlob,
+            image_posttest: record.posttestBlob,
             uuid: record.uuid
         };
 
@@ -458,18 +437,7 @@ if (typeof window !== 'undefined') {
             console.log('[AutoSync] Reset ' + count + ' stuck entries back to pending');
         }
 
-        // Step 2: Migrate any old Blob-format images to base64 strings.
-        // This MUST run eagerly on every page load to convert Blobs while they're
-        // still valid. iOS invalidates Blobs silently over time — if we wait until
-        // upload time, FileReader will hang forever on already-dead Blobs.
-        return migrateBlobsToBase64();
-    }).then(migrationResult => {
-        if (migrationResult && migrationResult.migrated > 0) {
-            console.log('[AutoSync] Blob migration: ' +
-                migrationResult.migrated + ' entries converted to base64, ' +
-                migrationResult.failed + ' had images already lost by iOS.');
-        }
-        // Step 3: Enable online listener for auto-sync on reconnect
+        // Enable online listener for auto-sync on reconnect
         enableAutoSync();
     }).catch(() => {
         enableAutoSync();

@@ -348,7 +348,7 @@ This status is from an older version. After updating, uploads are marked as `con
 - All frontend code is **vanilla JavaScript** — no frameworks, no build step
 - Bootstrap is bundled locally in `dist/` for offline use
 - The `BroadcastChannel` API is used for cross-page communication (form ↔ queue)
-- IndexedDB stores images as **Blobs** (not base64) to save ~33% storage
+- IndexedDB strictly stores images as **base64 strings** to prevent iOS Safari Blob invalidation bugs.
 - `code.gs` is NOT deployed with the frontend — it lives in the Google Apps Script editor attached to the Google Sheet
 - When making changes: **always bump `CACHE_VERSION` in `sw.js`** or users won't see updates
 
@@ -360,3 +360,4 @@ This status is from an older version. After updating, uploads are marked as `con
 |---|---|---|
 | v1.0 | Initial | Basic form with direct POST submission |
 | v1.5 | Apr 2026 | Offline-first rewrite: IndexedDB, bulk upload, PWA, queue page, bottom tab bar, verify button, LockService, UUID duplicate detection, exponential backoff, circuit breaker, update-aware service worker |
+| v1.8.5 | Apr 2026 | Complete elimination of legacy iOS Blob workaround; strict base64 encoding; memory optimizations for large queues; LockService stabilization. |
