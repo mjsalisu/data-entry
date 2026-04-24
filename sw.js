@@ -16,7 +16,7 @@
  *     and the page reloads with fresh files.
  */
 
-const CACHE_VERSION = 'dataentry-v1.9.0.3';
+const CACHE_VERSION = 'dataentry-v1.9.0.4';
 const APP_SHELL = [
     './',
     './index.html',
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
     // API calls (Google Apps Script) — network-first with cache fallback
-    if (url.href.includes('script.google.com')) {
+    if (url.href.includes('script.google.com') || url.href.includes('script.googleusercontent.com')) {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
@@ -106,8 +106,8 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(() => {
-                    // Offline — serve from cache
-                    return caches.match(event.request);
+                    // Offline — serve from cache (ignoring query strings if needed)
+                    return caches.match(event.request, { ignoreSearch: true });
                 })
         );
         return;
