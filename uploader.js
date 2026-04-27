@@ -474,9 +474,24 @@ document.addEventListener('visibilitychange', async () => {
                 _wakeLock = await navigator.wakeLock.request('screen');
             }
         } catch (err) { }
+        // Remove the screen-lock warning if user came back
+        const warn = document.getElementById('_iosUploadWarning');
+        if (warn) warn.remove();
     } else if (document.visibilityState === 'hidden' && _uploading) {
-        // iOS freezes JS here. Show a toast if we had a way, or just accept the pause.
         console.warn('App went to background! Uploads may be suspended by iOS.');
+        // Show a persistent warning — iOS will kill the upload if the screen locks.
+        // We inject it now so it's the FIRST thing the user sees when they return.
+        try {
+            if (!document.getElementById('_iosUploadWarning')) {
+                const w = document.createElement('div');
+                w.id = '_iosUploadWarning';
+                w.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b71c1c;color:#fff;padding:12px 16px;font-size:0.88rem;text-align:center;font-weight:bold;';
+                w.textContent = '⚠️ Keep your screen ON during uploads — locking the screen cancels active transfers on iPhone!';
+                document.body.prepend(w);
+                // Auto-remove after 10s in case user ignored it
+                setTimeout(() => { if (w.parentNode) w.remove(); }, 10000);
+            }
+        } catch (domErr) { /* document may be partially frozen on iOS */ }
     }
 });
 
@@ -508,7 +523,12 @@ async function fetchWithRetry(url, options, maxAttempts) {
     let lastError;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout per attempt
+        // 90s timeout per attempt.
+        // WHY 90s (not 30s): iOS Safari can take 60-80s on poor 4G to POST a large
+        // image payload (2-5MB base64). The old 30s was too aggressive and caused
+        // premature AbortErrors on legitimately slow connections. 90s gives enough
+        // room for both slow networks AND Google Apps Script's Drive upload time.
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
         try {
             options.signal = controller.signal;
@@ -587,7 +607,7 @@ function getUserFriendlyError(err) {
         fixPhrase = "Check WiFi/Cellular data. Device may be dropping packets.";
         if (errCode === 'ERR_UNKNOWN') errCode = 'ERR_NETWORK_DISCONNECT';
     } else if (lowerMsg.includes('timeout') || errCode === 'ERR_TIMEOUT') {
-        fixPhrase = "Server response took >30s. Connection is extremely slow or dropping.";
+        fixPhrase = "Server took >90s. Keep your screen ON during uploads — locking the screen cancels transfers on iPhone. Try on stronger WiFi.";
         errCode = 'ERR_TIMEOUT';
     } else if (lowerMsg.includes('too large') || lowerMsg.includes('quota') || lowerMsg.includes('payload')) {
         fixPhrase = "Image snapshots are too large. Try reducing camera resolution.";
