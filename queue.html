@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Queue — BCWS Data Entry</title>
+  <meta name="description" content="Manage and upload saved offline submissions for Jobberman BCWS Data Entry">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f3460">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link href="dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="queue.css">
+</head>
+
+<body class="queue-body">
+
+  <!-- Top Navigation -->
+  <nav class="queue-nav" id="queueNav">
+    <div class="nav-status" id="navNetworkStatus">
+      <span class="status-dot online" id="statusDot"></span>
+      <span class="status-text" id="statusText">Online</span>
+    </div>
+    <h1 class="nav-title">Upload Queue</h1>
+    <div style="width:70px;"></div> <!-- Spacer for centering -->
+  </nav>
+
+  <main class="queue-main">
+
+    <!-- Storage Info Banner -->
+    <div class="storage-warning" id="storageWarning">
+      <span class="warning-icon">🔒</span>
+      <p>Your entries are stored safely on this device. They will stay here until you upload them.
+        <strong>Avoid clearing browser data</strong> — this would erase your saved entries.
+        We've requested your browser to protect this data even under low storage.</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card stat-total">
+        <span class="stat-number" id="statTotal">0</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card stat-pending">
+        <span class="stat-number" id="statPending">0</span>
+        <span class="stat-label">Pending</span>
+      </div>
+      <div class="stat-card stat-confirmed">
+        <span class="stat-number" id="statConfirmed">0</span>
+        <span class="stat-label">Uploaded</span>
+      </div>
+      <div class="stat-card stat-failed">
+        <span class="stat-number" id="statFailed">0</span>
+        <span class="stat-label">Failed</span>
+      </div>
+    </div>
+
+    <!-- Storage Meter -->
+    <div class="storage-meter" id="storageMeter">
+      <div class="storage-header">
+        <span class="storage-label">💾 Storage Used</span>
+        <span class="storage-value" id="storageValue">-- MB</span>
+      </div>
+      <div class="storage-bar">
+        <div class="storage-bar-fill" id="storageBarFill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- KPI Stats Tracker -->
+    <div class="monthly-stats-box" id="kpiStatsBox">
+      <div class="stats-label" id="kpiPeriodLabel" style="margin-bottom: 8px;">📊 KPI Period</div>
+      <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; font-size: 0.9rem; margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Recorded</div>
+          <div id="kpiRecorded" style="font-weight: 700; font-size: 1.1rem; color: #1565c0;">0</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Uploaded</div>
+          <div id="kpiUploaded" style="font-weight: 700; font-size: 1.1rem; color: #2e7d32;">0</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #666; text-transform: uppercase;">Avg Time</div>
+          <div id="kpiAvgTime" style="font-weight: 700; font-size: 1.1rem; color: #e65100;">0s</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Controls -->
+    <div class="upload-controls" id="uploadControls">
+      <button id="uploadAllBtn" class="btn-upload-all" onclick="handleUploadAll()">
+        <span class="btn-icon">⬆️</span>
+        <span class="btn-text">Upload All</span>
+        <span class="btn-count" id="uploadBtnCount"></span>
+      </button>
+      <button id="pauseBtn" class="btn-pause" onclick="handlePause()" style="display:none;">
+        <span>⏸ Pause</span>
+      </button>
+      <button id="retryAllBtn" class="btn-retry-all" onclick="handleRetryAll()" style="display:none;">
+        <span>🔄 Retry Failed</span>
+      </button>
+    </div>
+
+    <!-- Progress Bar (shown during upload) -->
+    <div class="progress-container" id="progressContainer" style="display:none;">
+      <div class="progress-header">
+        <span class="progress-text" id="progressText">Uploading...</span>
+        <span class="progress-count" id="progressCount">0/0</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+      </div>
+      <div class="progress-current" id="progressCurrent"></div>
+
+      <!-- Upload Log Panel -->
+      <div class="upload-log-panel" id="uploadLogPanel" style="display:none;">
+        <div class="upload-log-header">
+          <span>📋 Upload Log</span>
+          <button class="log-copy-btn" onclick="copyUploadLog()" title="Copy log to clipboard">📋 Copy</button>
+        </div>
+        <div class="upload-log-list" id="uploadLogList"></div>
+      </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-filter="all" onclick="filterList('all', this)">All</button>
+      <button class="filter-tab" data-filter="pending" onclick="filterList('pending', this)">⏳ Pending</button>
+      <button class="filter-tab" data-filter="confirmed" onclick="filterList('confirmed', this)">✅ Done</button>
+      <button class="filter-tab" data-filter="failed" onclick="filterList('failed', this)">❌ Failed</button>
+    </div>
+
+    <!-- Submission List -->
+    <div class="submission-list" id="submissionList">
+      <!-- Entries rendered by queue.js -->
+      <div class="empty-state" id="emptyState">
+        <span class="empty-icon">📋</span>
+        <p>No submissions yet</p>
+        <a href="index.html" class="btn-back-form">← Go to Form</a>
+      </div>
+    </div>
+
+    <!-- Verify & Cleanup Section -->
+    <div class="verify-section" id="verifySection" style="display:none;">
+      <button id="verifyBtn" class="btn-verify" onclick="handleVerifyAll()">
+        🔍 Verify Uploads
+      </button>
+      <p class="verify-note">Check which entries actually landed in Google Sheets</p>
+
+      <!-- Verification Results (shown after verify runs) -->
+      <div id="verifyResults" style="display:none;"></div>
+    </div>
+
+    <!-- Cleanup Section -->
+    <div class="cleanup-section" id="cleanupSection" style="display:none;">
+      <button id="clearConfirmedBtn" class="btn-clear-confirmed" onclick="handleClearConfirmed()">
+        🗑️ Clear Uploaded Entries
+      </button>
+      <p class="cleanup-note">Removes entries from your device. Run "Verify Uploads" first if you want to double-check.</p>
+    </div>
+
+    <!-- App Version Footer -->
+    <div class="app-version-footer" id="appVersionFooter">
+      Loading version info...
+    </div>
+    <script>
+      (function () {
+        // Fetch sw.js to dynamically extract the CACHE_VERSION and Last-Modified date
+        fetch('sw.js', { cache: 'no-cache' })
+          .then(res => {
+            const lastMod = res.headers.get('Last-Modified');
+            // If header exists, parse it. Otherwise fallback to current time as a baseline.
+            const dateStr = lastMod ? new Date(lastMod).toLocaleString('en-NG') : new Date().toLocaleString('en-NG');
+            return res.text().then(text => ({ text, dateStr }));
+          })
+          .then(({ text, dateStr }) => {
+            const match = text.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+            let version = match ? match[1] : 'Unknown';
+            version = version.replace('dataentry-', ''); // Clean up string
+            
+            document.getElementById('appVersionFooter').innerText = version + ' • ' + dateStr;
+          })
+          .catch(err => {
+            document.getElementById('appVersionFooter').innerText = 'Version fetch failed';
+          });
+      })();
+    </script>
+  </main>
+
+  <!-- Confirmation Modal -->
+  <div class="modal-overlay" id="confirmModal" style="display:none;">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modalTitle">Confirm Action</h3>
+      <p class="modal-message" id="modalMessage"></p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="modalCancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn modal-btn-confirm" id="modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Detail Panel (slide-up) -->
+  <!-- Clicking the dark overlay backdrop closes the panel; clicking inside the panel does NOT -->
+  <div class="detail-overlay" id="detailOverlay" style="display:none;" onclick="closeDetail(event)">
+    <div class="detail-panel" id="detailPanel" onclick="event.stopPropagation()">
+      <div class="detail-header">
+        <h3 class="detail-title" id="detailTitle">Entry Details</h3>
+        <button class="detail-close" onclick="closeDetail()">&#215;</button>
+      </div>
+      <div class="detail-body" id="detailBody">
+        <!-- Populated by JS -->
+      </div>
+      <div class="detail-actions" id="detailActions">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+  <!-- Bottom Tab Bar (mobile-app style navigation) -->
+  <nav class="bottom-tab-bar" id="bottomTabBar">
+    <a href="index.html" class="tab-item" id="tabForm">
+      <span class="tab-icon">📝</span>
+      <span class="tab-label">Form</span>
+    </a>
+    <a href="queue.html" class="tab-item active" id="tabQueue">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">Upload Queue</span>
+      <span class="tab-badge" id="queueBadgeCount" style="display:none;">0</span>
+    </a>
+  </nav>
+
+  <script src="dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./dist/js/idb.umd.js"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="uploader.js"></script>
+  <script src="queue.js"></script>
+
+  <!-- PWA Update Flow + Storage -->
+  <script>
+    // Register Service Worker with update detection
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          reg.update();
+          setInterval(() => reg.update(), 30 * 60 * 1000);
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                handleSwUpdate(reg);
+              }
+            });
+          });
+
+          if (reg.waiting) handleSwUpdate(reg);
+        })
+        .catch(err => console.warn('[PWA] SW registration failed:', err));
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }
+
+    async function handleSwUpdate(registration) {
+      let pendingCount = 0;
+      try {
+        pendingCount = await getPendingCount();
+      } catch (e) { /* ignore */ }
+
+      if (pendingCount > 0) {
+        showUpdateBanner(registration, pendingCount);
+      } else {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    }
+
+    function showUpdateBanner(registration, count) {
+      const existing = document.getElementById('updateBanner');
+      if (existing) existing.remove();
+
+      const banner = document.createElement('div');
+      banner.id = 'updateBanner';
+      banner.innerHTML =
+        '<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:0.88rem;">' +
+        '  <span style="font-size:1.3rem;">✅</span>' +
+        '  <div style="flex:1;">' +
+        '    <strong>Applying app update...</strong><br>' +
+        '    <span style="font-size:0.8rem;opacity:0.9;">Your ' + count + ' saved entries are safe and will NOT be deleted. The page will reload shortly.</span>' +
+        '  </div>' +
+        '</div>';
+      document.body.prepend(banner);
+
+      window._swRegistration = registration;
+
+      setTimeout(() => {
+        console.log('[PWA] Auto-applying update — ' + count + ' entries safe in IndexedDB');
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }, 3000);
+    }
+
+    async function applyUpdate() {
+      if (window._swRegistration && window._swRegistration.waiting) {
+        window._swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    }
+
+    // Persistent storage — warn user if denied (data at risk of iOS eviction)
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(granted => {
+        console.log('[Storage] Persistent storage ' + (granted ? 'granted' : 'denied'));
+        const warningEl = document.getElementById('storageWarning');
+        if (!granted && warningEl) {
+          warningEl.innerHTML =
+            '<span class="warning-icon">⚠️</span>' +
+            '<p style="color:#ff6b6b;"><strong>Storage protection was DENIED by this browser.</strong> ' +
+            'Your saved entries may be deleted by iOS if storage runs low. ' +
+            '<strong>Upload your entries as soon as possible.</strong> ' +
+            'Try adding this site to your Home Screen to improve storage protection.</p>';
+          warningEl.style.borderColor = '#ff4444';
+        }
+      });
+    }
+  </script>
+
+</body>
+
+</html>
