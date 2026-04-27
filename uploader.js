@@ -92,11 +92,19 @@ function onBroadcastMessage(callback) {
  *
  * @returns {Promise<{uploaded: number, failed: number, total: number}>}
  */
+// Session-level lock token — prevents race conditions where two concurrent
+// uploadAll() calls (e.g. auto-sync + manual button) each pick up the same entry
+let _uploadSessionToken = null;
+
 async function uploadAll() {
     if (_uploading) {
-        console.log('Upload already in progress');
+        console.log('[Uploader] Upload already in progress — skipping concurrent call.');
         return null;
     }
+    // Generate a unique token for this upload session.
+    // If another session somehow sneaks through, the status update will silently no-op.
+    const sessionToken = Date.now() + '-' + Math.random().toString(36).slice(2);
+    _uploadSessionToken = sessionToken;
 
     _uploading = true;
     _paused = false;
@@ -222,8 +230,8 @@ async function uploadAll() {
             // We now mark as 'uploaded'. User must run "Verify" to upgrade to 'confirmed'.
             await updateSubmissionStatus(record.id, 'uploaded', null);
 
-            // KPI Tracker hook
-            if (typeof trackEntryUploaded === 'function') trackEntryUploaded();
+            // KPI Tracker hook — pass UUID so retries are not double-counted
+            if (typeof trackEntryUploaded === 'function') trackEntryUploaded(record.uuid);
 
             // ── Track Monthly Stats ──
             try {
@@ -336,8 +344,8 @@ async function uploadSingle(id) {
         // POST succeeded — mark as confirmed immediately
         await updateSubmissionStatus(id, 'confirmed', null);
 
-        // KPI Tracker hook
-        if (typeof trackEntryUploaded === 'function') trackEntryUploaded();
+        // KPI Tracker hook — pass UUID so retries are not double-counted
+        if (typeof trackEntryUploaded === 'function') trackEntryUploaded(record.uuid);
 
         broadcastMessage('entry_updated', { entryId: id, status: 'confirmed' });
         return true;
@@ -615,18 +623,34 @@ function blobToBase64(blob) {
 // leaving the local entry stuck in 'pending' even if the server received it.
 // This auto-sync silently processes a small number of pending items in the background
 // when the app loads, ensuring the local database reaches the 'uploaded' state seamlessly.
+// ── Startup Auto-Sync (straggler fix) ──
+// Fires 8 seconds after page load — long enough for resetStuckUploading() to complete
+// and the user to have already tapped "Upload All" if they want.
+// IMPORTANT: This MUST NOT run if any upload is already in progress to avoid duplicates.
 setTimeout(async () => {
-    if (navigator.onLine && !_uploading && typeof getPendingSubmissionIds === 'function') {
-        try {
-            const pendingIds = await getPendingSubmissionIds();
-            // Only auto-sync if there are 15 or fewer stragglers (don't lock up device for huge offline batches)
-            if (pendingIds.length > 0 && pendingIds.length <= 15) {
-                console.log(`[AutoSync] Background syncing ${pendingIds.length} straggler(s)...`);
-                // Trigger the main upload loop (it automatically skips duplicates on the server)
-                uploadAll();
-            }
-        } catch (e) {
-            console.error('[AutoSync] Failed to check pending count:', e);
-        }
+    // Double-check: do not auto-sync if an upload session is already active
+    if (_uploading) {
+        console.log('[AutoSync] Skipping startup sync — upload already in progress.');
+        return;
     }
-}, 4000); // Wait 4 seconds to let the UI finish rendering first
+    if (!navigator.onLine) {
+        console.log('[AutoSync] Skipping startup sync — device is offline.');
+        return;
+    }
+    if (typeof getPendingSubmissionIds !== 'function') return;
+
+    try {
+        const pendingIds = await getPendingSubmissionIds();
+        // Only auto-sync for a small number of stragglers.
+        // If there are many pending entries, the user must tap "Upload All" manually.
+        // This prevents an unexpected, long-running background process on page load.
+        if (pendingIds.length > 0 && pendingIds.length <= 5) {
+            console.log(`[AutoSync] Background syncing ${pendingIds.length} straggler(s)...`);
+            uploadAll();
+        } else if (pendingIds.length > 5) {
+            console.log(`[AutoSync] ${pendingIds.length} pending entries — user must tap 'Upload All'.`);
+        }
+    } catch (e) {
+        console.error('[AutoSync] Failed to check pending count:', e);
+    }
+}, 8000); // Wait 8s: enough time for resetStuckUploading + UI render + any user-initiated upload

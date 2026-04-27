@@ -8,102 +8,136 @@
  */
 
 function doPost(e) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(30000); // Wait up to 30 seconds for other processes to finish
-  } catch (lockError) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: "error", error: "System busy. Please try again later." }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('BCWS_Data') || ss.insertSheet('BCWS_Data');
 
+  let data;
   try {
-    // 1. Parse the JSON payload from the external site
-    const data = JSON.parse(e.postData.contents);
+    data = JSON.parse(e.postData.contents);
+  } catch (parseErr) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", error: "Invalid JSON payload." }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
-    // ─────────────────────────────────────────────
-    // 1.5. Duplicate Detection — check UUID before doing any work
-    //      Prevents re-writing the same submission if client retries
-    // ─────────────────────────────────────────────
-    if (data.uuid) {
+  // ─────────────────────────────────────────────
+  // 1. Duplicate Detection — locked, fast, lightweight
+  //    Hold the lock ONLY for this check, then release immediately.
+  //    Drive uploads must NOT happen inside a lock — they are slow and
+  //    cause all concurrent users to queue up, triggering "Service error: Drive".
+  // ─────────────────────────────────────────────
+  if (data.uuid) {
+    const lock = LockService.getDocumentLock();
+    try {
+      lock.waitLock(15000);
       const existingData = sheet.getDataRange().getValues();
       const uuidColIndex = 54; // Column BC (0-indexed)
       for (var i = 1; i < existingData.length; i++) {
         if (existingData[i][uuidColIndex] &&
             existingData[i][uuidColIndex].toString().trim() === data.uuid.trim()) {
-          // Already exists — return success without re-writing
+          lock.releaseLock();
           return ContentService
             .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
             .setMimeType(ContentService.MimeType.JSON);
         }
       }
+    } catch (lockError) {
+      // If we can't get the lock, proceed anyway — the UUID index will catch true duplicates
+      console.warn("UUID check lock timed out:", lockError.toString());
+    } finally {
+      try { lock.releaseLock(); } catch (e) { /* already released */ }
     }
+  }
 
+  try {
     // ─────────────────────────────────────────────
-    // 2. Google Drive Image Uploads (PreTest & PostTest)
-    //    Done OUTSIDE the lock — Drive writes don't conflict with Sheet writes
+    // 2. Google Drive Image Uploads
+    //    Done OUTSIDE any lock — concurrent Drive writes are safe.
+    //    Each user writes to their own uniquely-named file (timestamp + UUID).
+    //    Retry with exponential backoff to handle transient "Service error: Drive".
     // ─────────────────────────────────────────────
-    // Helper to get or create folder with exponential backoff retry to handle "Service error: Drive"
     function getOrCreateFolder(parent, folderName, isRoot) {
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
         try {
-          let folders = isRoot ? DriveApp.getFoldersByName(folderName) : parent.getFoldersByName(folderName);
+          let folders = isRoot
+            ? DriveApp.getFoldersByName(folderName)
+            : parent.getFoldersByName(folderName);
           if (folders.hasNext()) return folders.next();
-          return isRoot ? DriveApp.createFolder(folderName) : parent.createFolder(folderName);
-        } catch (e) {
-          if (attempt === 3) throw e;
-          Utilities.sleep(1000 * Math.pow(2, attempt) + Math.random() * 1000);
+          return isRoot
+            ? DriveApp.createFolder(folderName)
+            : parent.createFolder(folderName);
+        } catch (driveErr) {
+          if (attempt === 4) throw driveErr;
+          Utilities.sleep(Math.min(1000 * Math.pow(2, attempt), 16000) + Math.random() * 2000);
         }
       }
     }
 
-    // Root folder
     const rootFolderName = "Participant_Snapshots";
     let rootFolder = getOrCreateFolder(null, rootFolderName, true);
 
-    // Month subfolder (e.g. "March_2026")
     const months = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
     const now = new Date();
     const monthFolderName = months[now.getMonth()] + '_' + now.getFullYear();
     let monthFolder = getOrCreateFolder(rootFolder, monthFolderName, false);
 
-    // State subfolder (e.g. "Kano")
     const stateName = (data.state || 'Unknown_State').trim();
     let folder = getOrCreateFolder(monthFolder, stateName, false);
 
     const participantName = (data.name || 'Unknown').replace(/\s+/g, '_');
-    const timestamp = new Date().getTime();
+    // Use UUID suffix (first 8 chars) to guarantee unique filenames even if
+    // two requests arrive at the same millisecond
+    const uuidSuffix = data.uuid ? data.uuid.slice(0, 8) : Date.now().toString(36);
 
     function uploadImage(base64String, label) {
-      if (!base64String || typeof base64String !== 'string' || base64String.trim() === '') return { url: '', path: '' };
-      try {
-        const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
-        const bytes = Utilities.base64Decode(base64String.split(",")[1]);
-        const fileName = `${participantName}_${label}_${timestamp}.jpg`;
-        const blob = Utilities.newBlob(bytes, contentType, fileName);
-        const file = folder.createFile(blob);
-        const filePath = `${rootFolderName}/${monthFolderName}/${stateName}/${fileName}`;
-        return { url: file.getUrl(), path: filePath };
-      } catch (imgErr) {
-        return { url: `Upload Error: ${imgErr.message}`, path: '' };
+      if (!base64String || typeof base64String !== 'string' || base64String.trim() === '') {
+        return { url: '', path: '' };
       }
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
+          const bytes = Utilities.base64Decode(base64String.split(",")[1]);
+          const fileName = `${participantName}_${label}_${uuidSuffix}.jpg`;
+          const blob = Utilities.newBlob(bytes, contentType, fileName);
+          const file = folder.createFile(blob);
+          const filePath = `${rootFolderName}/${monthFolderName}/${stateName}/${fileName}`;
+          return { url: file.getUrl(), path: filePath };
+        } catch (imgErr) {
+          if (attempt === 3) return { url: `Upload Error: ${imgErr.message}`, path: '' };
+          Utilities.sleep(Math.min(1000 * Math.pow(2, attempt), 8000) + Math.random() * 1000);
+        }
+      }
+      return { url: '', path: '' };
     }
 
     const pretestResult  = uploadImage(data.image_pretest,  'PreTest');
     const posttestResult = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
-    // 3. APPEND ROW — No LockService needed!
-    //    appendRow() is inherently atomic in Google Sheets.
-    //    UUID-based duplicate detection (step 1.5) handles idempotency.
-    //    Removing LockService avoids "too many LockService operations" quota errors
-    //    when 200+ users upload concurrently.
+    // 3. APPEND ROW — with a final UUID re-check inside a lock.
+    //    WHY: Between step 1 (UUID check) and here, we spent 5-20s on Drive uploads.
+    //    A concurrent request for the same UUID could have passed step 1 too and is
+    //    about to appendRow simultaneously. The second lock + re-check closes this window.
     // ─────────────────────────────────────────────
-    sheet.appendRow([
+    if (data.uuid) {
+      const appendLock = LockService.getDocumentLock();
+      try {
+        appendLock.waitLock(20000);
+        // Re-check UUID — another concurrent request may have appended it while we were uploading to Drive
+        const freshData = sheet.getDataRange().getValues();
+        const uuidColIndex = 54;
+        for (var j = 1; j < freshData.length; j++) {
+          if (freshData[j][uuidColIndex] &&
+              freshData[j][uuidColIndex].toString().trim() === data.uuid.trim()) {
+            appendLock.releaseLock();
+            return ContentService
+              .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+        // UUID not found — safe to append. Do it inside the lock so we're atomic.
+        sheet.appendRow([
       new Date(),                       // A: Timestamp
 
       // ── Metadata & Consent ──────────────────
@@ -181,8 +215,36 @@ function doPost(e) {
       data.uuid               || '',    // BC: Submission UUID
     ]);
 
-    // Flush changes to ensure the write is committed before returning
-    SpreadsheetApp.flush();
+        SpreadsheetApp.flush();
+      } catch (appendErr) {
+        throw appendErr; // Re-throw so outer catch can log it
+      } finally {
+        try { appendLock.releaseLock(); } catch (e) { /* already released */ }
+      }
+    } else {
+      // No UUID (legacy entry) — append without lock
+      sheet.appendRow([
+        new Date(),
+        data.consent || '', data.certificate_id || '', data.post_test_score || '',
+        data.inputted_by || '', data.jobberman_sst || '', data.name || '',
+        data.email || '', data.phone || '', data.phone_type || '', data.alt_phone || '',
+        data.address || '', data.gender || '', data.dob || '', data.qualification || '',
+        data.current_level || '', data.employment_status || '', data.current_occupation || '',
+        data.preferred_industry || '', data.preferred_job_role || '', data.top_skills || '',
+        data.income_range || '', data.state || '', data.training_details || '',
+        data.settlement || '', data.idp || '', data.disability || '', data.disability_type || '',
+        data.existing_business || '', data.business_nature || '', data.formal_training || '',
+        data.tech_access || '', data.internet_access || '', data.preferred_language || '',
+        data.prev_soft_skills || '', data.training_reason || '', data.confidence_level || '',
+        data.job_search_duration || '', data.job_search_challenge || '', data.desired_outcome || '',
+        data.has_cv || '', data.hall_rating || '', data.facilities_adequate || '',
+        data.ref_biscuit || '', data.ref_drink || '', data.ref_water || '',
+        data.refreshment_satisfaction || '', data.refreshment_enhanced || '',
+        data.facilitator_rating || '', pretestResult.url, pretestResult.path,
+        posttestResult.url, posttestResult.path, data.is_duplicate || '', ''
+      ]);
+      SpreadsheetApp.flush();
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "success" }))
@@ -191,24 +253,20 @@ function doPost(e) {
   } catch (err) {
     // Log errors to a separate 'Errors' sheet for debugging
     const errSheet = ss.getSheetByName('Errors') || ss.insertSheet('Errors');
-    
+
     let errorPayload = e.postData && e.postData.contents ? e.postData.contents : "";
     try {
       let parsedPayload = JSON.parse(errorPayload);
       delete parsedPayload.image_pretest;
       delete parsedPayload.image_posttest;
       errorPayload = JSON.stringify(parsedPayload);
-    } catch (parseErr) {
-      // If it fails to parse, leave as original string
-    }
+    } catch (parseErr) { /* leave as-is */ }
 
     errSheet.appendRow([new Date(), err.toString(), errorPayload]);
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lock.releaseLock();
   }
 }
 

@@ -201,11 +201,12 @@
   </div>
 
   <!-- Entry Detail Panel (slide-up) -->
+  <!-- Clicking the dark overlay backdrop closes the panel; clicking inside the panel does NOT -->
   <div class="detail-overlay" id="detailOverlay" style="display:none;" onclick="closeDetail(event)">
-    <div class="detail-panel" id="detailPanel">
+    <div class="detail-panel" id="detailPanel" onclick="event.stopPropagation()">
       <div class="detail-header">
         <h3 class="detail-title" id="detailTitle">Entry Details</h3>
-        <button class="detail-close" onclick="closeDetail()">&times;</button>
+        <button class="detail-close" onclick="closeDetail()">&#215;</button>
       </div>
       <div class="detail-body" id="detailBody">
         <!-- Populated by JS -->

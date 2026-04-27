@@ -923,10 +923,19 @@
       navigator.storage.persist().then(granted => {
         console.log('[Storage] Persistent storage ' + (granted ? 'granted' : 'denied'));
         if (!granted) {
-          // Show a subtle warning on the form page
+          // Detect platform for targeted advice
+          const ua = navigator.userAgent || '';
+          const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+          const isAndroid = /Android/.test(ua);
+          const platformNote = isIOS
+            ? 'iOS may delete unsaved data when storage runs low. Add this app to your Home Screen for better protection.'
+            : isAndroid
+            ? 'Android Chrome may delete unsaved data unless you add this app to your Home Screen.'
+            : 'Your browser may delete unsaved data if storage runs low. Add this site to your Home Screen or bookmarks.';
+
           const banner = document.createElement('div');
           banner.style.cssText = 'background:#2a1515;border:1px solid #ff4444;color:#ff6b6b;padding:10px 14px;margin:8px 12px;border-radius:8px;font-size:0.82rem;';
-          banner.innerHTML = '⚠️ <strong>Storage protection denied.</strong> Upload entries ASAP — iOS may delete unsaved data. Add to Home Screen for better protection.';
+          banner.innerHTML = '⚠️ <strong>Storage protection denied.</strong> Upload entries ASAP — ' + platformNote;
           const main = document.querySelector('.container') || document.body;
           main.prepend(banner);
         }

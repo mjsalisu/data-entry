@@ -650,8 +650,11 @@ async function showDetail(id) {
 }
 
 function closeDetail(event) {
+    // If called from a backdrop click, only close if the click target is the overlay itself
+    // (not a child element like a button). If called directly (no event), always close.
     if (event && event.target !== document.getElementById('detailOverlay')) return;
-    document.getElementById('detailOverlay').style.display = 'none';
+    const overlay = document.getElementById('detailOverlay');
+    if (overlay) overlay.style.display = 'none';
 }
 
 async function handleDetailRetry(id) {

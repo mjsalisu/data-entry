@@ -114,12 +114,10 @@ async function saveSubmission(payload, images) {
  */
 async function getPendingSubmissions() {
     const db = await openDB();
-    // Retrieve both 'pending' and 'uploading' items
-    // If an item is stuck in 'uploading', we want to try uploading it again
-    // Server-side UUID detection prevents duplicate rows.
+    // Only return 'pending' entries — NOT 'uploading' (already being processed)
+    // See getPendingSubmissionIds() for full explanation of why.
     const pending = await db.getAllFromIndex(STORE_NAME, 'status', 'pending');
-    const uploading = await db.getAllFromIndex(STORE_NAME, 'status', 'uploading');
-    return pending.concat(uploading);
+    return pending;
 }
 
 /**
@@ -170,17 +168,26 @@ async function getAllSubmissionsLight() {
 }
 
 /**
- * Get IDs of all pending and uploading submissions.
+ * Get IDs of all pending submissions ready for upload.
  * Only loads keys, not full records — prevents memory exhaustion
  * when there are 100+ entries with large image data.
+ *
+ * WHY only 'pending' (not 'uploading'):
+ *   An entry is set to 'uploading' the moment uploadAll() starts sending it.
+ *   Including 'uploading' entries here would cause a second concurrent uploadAll()
+ *   call (e.g. auto-sync + manual button race) to pick up the SAME entry and POST
+ *   it twice → duplicate rows in Google Sheets.
+ *   resetStuckUploading() (called on every page load) resets any genuinely orphaned
+ *   'uploading' entries (from app crash / navigation away) back to 'pending'.
  *
  * @returns {Promise<Array<number>>}
  */
 async function getPendingSubmissionIds() {
     const db = await openDB();
+    // IMPORTANT: Only return 'pending' entries.
+    // Do NOT include 'uploading' — they are already being processed by the active session.
     const pendingKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'pending');
-    const uploadingKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'uploading');
-    return pendingKeys.concat(uploadingKeys);
+    return pendingKeys;
 }
 
 /**
@@ -435,8 +442,22 @@ function trackFormSaved() {
     }
 }
 
-/** Called in uploader.js when an entry is successfully POSTed */
-function trackEntryUploaded() {
+// Session-level set of UUIDs already counted as "uploaded" in KPI.
+// Prevents retried entries from inflating the uploaded count.
+const _kpiCountedUuids = new Set();
+
+/** Called in uploader.js when an entry is successfully POSTed.
+ * @param {string} [uuid] - The UUID of the uploaded entry (for deduplication).
+ */
+function trackEntryUploaded(uuid) {
+    // If a UUID is provided and we've already counted it this session, skip.
+    if (uuid) {
+        if (_kpiCountedUuids.has(uuid)) {
+            console.log('[KPI] Skipping duplicate upload count for UUID:', uuid);
+            return;
+        }
+        _kpiCountedUuids.add(uuid);
+    }
     let current = parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10);
     localStorage.setItem('kpi_total_uploaded', (current + 1).toString());
 }
