@@ -637,19 +637,20 @@
 }
 
 /* ── Detail Panel (slide-up) ── */
+/* Tab bar z-index is 1040 — overlay MUST be above it */
 .detail-overlay {
   position: fixed;
   inset: 0;
-  z-index: 150;
-  background: rgba(0, 0, 0, 0.5);
+  z-index: 1050;   /* above bottom-tab-bar (z-index: 1040) */
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(3px);
 }
 .detail-panel {
   position: fixed;
-  bottom: 0;
+  bottom: 62px;    /* sit above the bottom tab bar (~62px tall) */
   left: 0;
   right: 0;
-  max-height: 85vh;
+  max-height: calc(85vh - 62px);
   background: #141833;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
@@ -658,7 +659,7 @@
   /* Flex column so header + actions are pinned, only body scrolls */
   display: flex;
   flex-direction: column;
-  overflow: hidden;  /* panel itself does NOT scroll */
+  overflow: hidden;
 }
 @keyframes slide-up {
   from { transform: translateY(100%); }
