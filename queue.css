@@ -649,14 +649,16 @@
   bottom: 0;
   left: 0;
   right: 0;
-  max-height: 80vh;
+  max-height: 85vh;
   background: #141833;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  overflow-y: auto;
   animation: slide-up 0.3s ease-out;
-  -webkit-overflow-scrolling: touch;
+  /* Flex column so header + actions are pinned, only body scrolls */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;  /* panel itself does NOT scroll */
 }
 @keyframes slide-up {
   from { transform: translateY(100%); }
@@ -695,6 +697,11 @@
 
 .detail-body {
   padding: 16px 20px;
+  /* Only this section scrolls — header and actions stay pinned */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;  /* takes all remaining space between header and actions */
+  min-height: 0;  /* required for flex children to scroll properly */
 }
 .detail-section {
   margin-bottom: 16px;
@@ -726,35 +733,43 @@
 }
 .detail-image {
   max-width: 100%;
-  max-height: 200px;
+  max-height: 160px;   /* keep images compact so actions stay visible */
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 4px;
 }
 
+
 .detail-actions {
   display: flex;
   gap: 10px;
-  padding: 16px 20px;
+  padding: 14px 20px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom)); /* iPhone notch */
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #141833;  /* opaque so it doesn't show body content bleeding through */
+  flex-shrink: 0;       /* never compress — always full height */
 }
 .detail-btn {
   flex: 1;
-  padding: 12px;
+  padding: 14px 12px;  /* slightly taller for easier tapping on mobile */
   border-radius: 10px;
   border: none;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   text-align: center;
+  min-height: 48px;    /* WCAG touch target minimum */
 }
 .detail-btn-retry {
-  background: rgba(66, 165, 245, 0.15);
+  background: rgba(66, 165, 245, 0.18);
   color: #64b5f6;
+  border: 1px solid rgba(66, 165, 245, 0.3);
 }
 .detail-btn-delete {
-  background: rgba(239, 83, 80, 0.12);
+  background: rgba(239, 83, 80, 0.15);
   color: #ef5350;
+  border: 1px solid rgba(239, 83, 80, 0.3);
 }
 
 /* ── Date Group Headers ── */
