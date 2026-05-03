@@ -218,6 +218,10 @@ function populateRefreshments(stateVal) {
                 opt.textContent = item;
                 biscuitSelect.add(opt);
             });
+            const opt = document.createElement('option');
+            opt.value = 'Other';
+            opt.textContent = 'Other';
+            biscuitSelect.add(opt);
         }
 
         if (stateData.drink) {
@@ -227,6 +231,10 @@ function populateRefreshments(stateVal) {
                 opt.textContent = item;
                 drinkSelect.add(opt);
             });
+            const opt = document.createElement('option');
+            opt.value = 'Other';
+            opt.textContent = 'Other';
+            drinkSelect.add(opt);
         }
     } else {
         biscuitSelect.innerHTML = '<option value="">Select state first</option>';
@@ -235,6 +243,26 @@ function populateRefreshments(stateVal) {
 
     validateField(biscuitSelect);
     validateField(drinkSelect);
+    toggleRefreshmentOther('biscuit');
+    toggleRefreshmentOther('drink');
+}
+
+/**
+ * Toggle "Other" text input for refreshments
+ */
+function toggleRefreshmentOther(id) {
+    const select = document.getElementById('ref_' + id);
+    const otherGroup = document.getElementById('ref_' + id + '_other_group');
+    const otherInput = document.getElementById('ref_' + id + '_other');
+    if (!select || !otherGroup) return;
+
+    if (select.value === 'Other') {
+        otherGroup.style.display = 'block';
+        if (otherInput) otherInput.required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        if (otherInput) { otherInput.required = false; otherInput.value = ''; }
+    }
 }
 
 /**
@@ -482,6 +510,8 @@ function resetForm() {
     togglePreferredIndustryOther();
     togglePhoneZeroNote();
     toggleExistingBusiness();
+    toggleRefreshmentOther('biscuit');
+    toggleRefreshmentOther('drink');
 
     // Re-enable all language checkboxes (in case Unfilled had disabled them)
     const form2 = document.getElementById('dataForm');
@@ -722,6 +752,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ── Refreshment "Other" toggles ──
+    const refBiscuitSelect = document.getElementById('ref_biscuit');
+    if (refBiscuitSelect) {
+        refBiscuitSelect.addEventListener('change', () => { 
+            toggleRefreshmentOther('biscuit'); 
+            validateField(refBiscuitSelect); 
+        });
+    }
+    const refDrinkSelect = document.getElementById('ref_drink');
+    if (refDrinkSelect) {
+        refDrinkSelect.addEventListener('change', () => { 
+            toggleRefreshmentOther('drink'); 
+            validateField(refDrinkSelect); 
+        });
+    }
+
     // ── Qualification logic ──
     const qualSelect = document.getElementById('qualification');
     if (qualSelect) {
@@ -902,6 +948,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         delete payload.preferred_industry_other;
 
+        // Refreshments: if "Other" was selected, use the typed value
+        ['biscuit', 'drink'].forEach(id => {
+            const key = 'ref_' + id;
+            const otherKey = 'ref_' + id + '_other';
+            if (payload[key] === 'Other' && payload[otherKey]) {
+                payload[key] = payload[otherKey];
+            }
+            delete payload[otherKey];
+        });
+
         // Preferred language: if "Other" was checked, replace it with the typed value
         if (payload.preferred_language && payload.preferred_language.includes('Other')) {
             const otherText = payload.preferred_language_other || 'Other';
@@ -1023,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             formEl.style.display = 'block';
 
             // Reset the form
-            discardDraft();
+            resetForm();
 
             // Track start time for the next entry
             if (typeof trackFormStart === 'function') trackFormStart();
