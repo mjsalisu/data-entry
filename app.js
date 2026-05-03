@@ -169,7 +169,6 @@ function onStateChange() {
         certPrefix.textContent = code + '/PT/';
     }
 
-    saveDraft();
 }
 
 /**
@@ -195,7 +194,6 @@ function onInputtedByChange() {
     }
 
     validateField(trainingSelect);
-    saveDraft();
 }
 
 /**
@@ -431,95 +429,11 @@ function applyValidClass(field, valid) {
     }
 }
 
-// ─────────────────────────────────────────────
-// Session Draft — localStorage with floating indicator
-// ─────────────────────────────────────────────
-const DRAFT_KEY = 'jobberman_form_draft';
-let saveTimer = null;
-let indicatorTimer = null;
 
 /**
- * Shows the floating draft indicator with a status.
- * @param {'saving'|'saved'|'error'} status
- * @param {string} text
+ * Resets the form, all cascading/conditional fields, and clears validation.
  */
-function showDraftStatus(status, text) {
-    const indicator = document.getElementById('draftIndicator');
-    const icon = document.getElementById('draftIcon');
-    const label = document.getElementById('draftText');
-    if (!indicator) return;
-
-    clearTimeout(indicatorTimer);
-
-    // Set visual state
-    indicator.className = 'draft-indicator ' + status;
-    icon.className = 'draft-icon' + (status === 'saving' ? ' spinning' : '');
-    icon.textContent = status === 'saving' ? '⏳' : status === 'saved' ? '✅' : '❌';
-    label.textContent = text;
-
-    // Show
-    indicator.style.display = 'flex';
-    requestAnimationFrame(() => indicator.classList.add('visible'));
-
-    // Auto-hide after 2s (only for 'saved')
-    if (status === 'saved') {
-        indicatorTimer = setTimeout(() => {
-            indicator.classList.remove('visible');
-            setTimeout(() => { indicator.style.display = 'none'; }, 300);
-        }, 2000);
-    }
-}
-
-/**
- * Collects all named form field values and saves them to localStorage.
- * Debounced by 500ms to avoid excessive writes on fast typing.
- * Shows a floating save indicator.
- */
-function saveDraft() {
-    clearTimeout(saveTimer);
-    showDraftStatus('saving', 'Saving draft…');
-
-    saveTimer = setTimeout(() => {
-        const form = document.getElementById('dataForm');
-        if (!form) return;
-
-        const draft = {};
-        const formData = new FormData(form);
-
-        // Get all checkboxes as array
-        const checkboxMap = {};
-        form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            if (!checkboxMap[cb.name]) checkboxMap[cb.name] = [];
-            if (cb.checked) checkboxMap[cb.name].push(cb.value);
-        });
-
-        formData.forEach((v, k) => {
-            // Avoid double-storing checkbox values already handled above
-            if (!(k in checkboxMap)) draft[k] = v;
-        });
-
-        // Merge checkbox values
-        Object.entries(checkboxMap).forEach(([k, vals]) => {
-            draft[k] = vals;
-        });
-
-        try {
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-            showDraftStatus('saved', 'Draft saved');
-        } catch (e) {
-            showDraftStatus('error', 'Save failed');
-        }
-    }, 500);
-}
-
-/**
- * Discards the draft: clears localStorage, resets the form,
- * resets all cascading/conditional fields, and clears validation.
- */
-function discardDraft() {
-    // Clear stored draft
-    localStorage.removeItem(DRAFT_KEY);
-
+function resetForm() {
     const form = document.getElementById('dataForm');
     if (!form) return;
 
@@ -586,144 +500,9 @@ function discardDraft() {
     const langMsg = document.getElementById('lang_validation_msg');
     if (langMsg) langMsg.style.display = 'none';
 
-    // Hide the draft banner
-    const banner = document.getElementById('draftBanner');
-    if (banner) banner.style.setProperty('display', 'none', 'important');
-
-    // Hide the indicator
-    const indicator = document.getElementById('draftIndicator');
-    if (indicator) { indicator.classList.remove('visible'); indicator.style.display = 'none'; }
 }
 
-/**
- * Restores form field values from a saved draft object.
- * Handles the cascading dropdowns by rebuilding them in sequence.
- * @param {Object} draft
- */
-function restoreDraft(draft) {
-    const form = document.getElementById('dataForm');
-    if (!form) return;
 
-    // First pass: restore all non-cascading fields
-    Object.entries(draft).forEach(([name, value]) => {
-        // Skip cascading fields — we'll handle them after
-        if (['state', 'inputted_by', 'training_details', 'ref_biscuit', 'ref_drink'].includes(name)) return;
-
-        // Handle checkboxes
-        const checkboxes = form.querySelectorAll(`input[name="${name}"][type="checkbox"]`);
-        if (checkboxes.length > 0) {
-            const vals = Array.isArray(value) ? value : (value ? value.split(', ') : []);
-            checkboxes.forEach(cb => { cb.checked = vals.includes(cb.value); });
-            return;
-        }
-
-        // Handle regular inputs, selects, textareas
-        // Note: form.elements[name] returns a RadioNodeList for radio groups (no nodeType).
-        // For single elements (input, select, textarea) it returns the element with nodeType === 1.
-        const field = form.elements[name];
-        if (field && field.nodeType === 1) {
-            field.value = value || '';
-        }
-    });
-
-    // Second pass: rebuild cascading dropdowns
-    if (draft['state']) {
-        const stateEl = document.getElementById('state');
-        if (stateEl) {
-            stateEl.value = draft['state'];
-
-            // Rebuild "Inputted by" options for this state
-            const inputtedBySelect = document.getElementById('inputted_by');
-            if (inputtedBySelect && DYNAMIC_FIELDS[draft['state']]) {
-                inputtedBySelect.innerHTML = '<option value="">-- Select --</option>';
-                Object.keys(DYNAMIC_FIELDS[draft['state']]).sort().forEach(name => {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = name;
-                    inputtedBySelect.add(opt);
-                });
-
-                if (draft['inputted_by']) {
-                    inputtedBySelect.value = draft['inputted_by'];
-
-                    // Rebuild "Training Details" options
-                    const trainingSelect = document.getElementById('training_details');
-                    if (trainingSelect &&
-                        DYNAMIC_FIELDS[draft['state']][draft['inputted_by']]) {
-                        trainingSelect.innerHTML = '<option value="">-- Select --</option>';
-                        DYNAMIC_FIELDS[draft['state']][draft['inputted_by']].forEach(inst => {
-                            const opt = document.createElement('option');
-                            opt.value = inst;
-                            opt.textContent = inst;
-                            trainingSelect.add(opt);
-                        });
-
-                        if (draft['training_details']) {
-                            trainingSelect.value = draft['training_details'];
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Third pass: rebuild refreshment dropdowns from State
-    if (draft['state']) {
-        populateRefreshments(draft['state']);
-        if (draft['ref_biscuit']) {
-            const bs = document.getElementById('ref_biscuit');
-            if (bs) bs.value = draft['ref_biscuit'];
-        }
-        if (draft['ref_drink']) {
-            const ds = document.getElementById('ref_drink');
-            if (ds) ds.value = draft['ref_drink'];
-        }
-
-        // Update Certificate ID prefix
-        const certPrefix = document.getElementById('certIdPrefix');
-        if (certPrefix) {
-            const code = (typeof STATE_CODES !== 'undefined' && STATE_CODES[draft['state']]) ? STATE_CODES[draft['state']] : '??';
-            certPrefix.textContent = code + '/PT/';
-        }
-    }
-
-    // Re-trigger conditional field logic
-    toggleLevel();
-    toggleJobbermanNote();
-    toggleDisability();
-    toggleDisabilityOther();
-    toggleLanguageOther();
-    togglePreferredIndustryOther();
-    togglePhoneZeroNote();
-    toggleExistingBusiness();
-
-    // Restore snapshot previews if draft contains image data
-    ['pretest', 'posttest'].forEach(key => {
-        const hiddenInput = document.getElementById('imgData-' + key);
-        if (hiddenInput && hiddenInput.value && hiddenInput.value.length > 0) {
-            const preview = document.getElementById('preview-' + key);
-            const msgEl = document.getElementById(key + '_validation_msg');
-            const groupEl = document.getElementById(key + '_snapshot_group');
-
-            if (preview) {
-                preview.src = hiddenInput.value;
-                preview.style.display = 'block';
-            }
-            if (msgEl) msgEl.style.display = 'none';
-            if (groupEl) {
-                groupEl.classList.remove('snapshot-invalid');
-                groupEl.classList.add('snapshot-valid');
-            }
-        }
-    });
-
-    // Validate all restored fields after a short delay
-    setTimeout(() => {
-        form.querySelectorAll('input, select, textarea').forEach(field => {
-            if (field.name) validateField(field);
-        });
-    }, 100);
-}
 
 // ─────────────────────────────────────────────
 // Qualification → Current Level toggle
@@ -940,40 +719,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (trainingSelect) {
         trainingSelect.addEventListener('change', () => {
             validateField(trainingSelect);
-            saveDraft();
         });
     }
 
     // ── Qualification logic ──
     const qualSelect = document.getElementById('qualification');
     if (qualSelect) {
-        qualSelect.addEventListener('change', () => { toggleLevel(); validateField(qualSelect); saveDraft(); });
+        qualSelect.addEventListener('change', () => { toggleLevel(); validateField(qualSelect); });
         toggleLevel();
     }
 
     // ── Jobberman SST cross-check note ──
     const sstSelect = document.getElementById('jobberman_sst');
     if (sstSelect) {
-        sstSelect.addEventListener('change', () => { toggleJobbermanNote(); validateField(sstSelect); saveDraft(); });
+        sstSelect.addEventListener('change', () => { toggleJobbermanNote(); validateField(sstSelect); });
         toggleJobbermanNote();
     }
 
     // ── Disability toggle ──
     const disSelect = document.getElementById('disability');
     if (disSelect) {
-        disSelect.addEventListener('change', () => { toggleDisability(); validateField(disSelect); saveDraft(); });
+        disSelect.addEventListener('change', () => { toggleDisability(); validateField(disSelect); });
         toggleDisability();
     }
     const disTypeSelect = document.getElementById('disability_type');
     if (disTypeSelect) {
-        disTypeSelect.addEventListener('change', () => { toggleDisabilityOther(); validateField(disTypeSelect); saveDraft(); });
+        disTypeSelect.addEventListener('change', () => { toggleDisabilityOther(); validateField(disTypeSelect); });
         toggleDisabilityOther();
     }
 
     // ── Language "Other" checkbox toggle + Unfilled exclusivity ──
     const langOtherCb = document.getElementById('langOther');
     if (langOtherCb) {
-        langOtherCb.addEventListener('change', () => { toggleLanguageOther(); saveDraft(); });
+        langOtherCb.addEventListener('change', () => { toggleLanguageOther(); });
         toggleLanguageOther();
     }
 
@@ -987,7 +765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Preferred Industry toggle ──
     const prefIndSelect = document.getElementById('preferred_industry');
     if (prefIndSelect) {
-        prefIndSelect.addEventListener('change', () => { togglePreferredIndustryOther(); validateField(prefIndSelect); saveDraft(); });
+        prefIndSelect.addEventListener('change', () => { togglePreferredIndustryOther(); validateField(prefIndSelect); });
         togglePreferredIndustryOther();
     }
 
@@ -1001,11 +779,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Existing Business toggle ──
     const existingBizSelect = document.getElementById('existing_business');
     if (existingBizSelect) {
-        existingBizSelect.addEventListener('change', () => { toggleExistingBusiness(); validateField(existingBizSelect); saveDraft(); });
+        existingBizSelect.addEventListener('change', () => { toggleExistingBusiness(); validateField(existingBizSelect); });
         toggleExistingBusiness();
     }
 
-    // ── Attach real-time validation + draft save to ALL form fields ──
+    // ── Attach real-time validation to ALL form fields ──
     form.querySelectorAll('input, select, textarea').forEach(field => {
         const events = (field.type === 'checkbox' || field.type === 'radio')
             ? ['change']
@@ -1014,40 +792,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         events.forEach(evt => {
             field.addEventListener(evt, () => {
                 validateField(field);
-                saveDraft();
             });
         });
     });
-
-    // ── Draft Restore Banner Logic ──
-    const draft = localStorage.getItem(DRAFT_KEY);
-    const draftBanner = document.getElementById('draftBanner');
-
-    if (draft && draftBanner) {
-        try {
-            const parsed = JSON.parse(draft);
-            const hasContent = Object.values(parsed).some(v =>
-                (Array.isArray(v) ? v.length > 0 : v && v.trim() !== '' && v !== '')
-            );
-
-            if (hasContent) {
-                draftBanner.style.setProperty('display', 'flex', 'important');
-
-                document.getElementById('restoreDraftBtn').addEventListener('click', () => {
-                    restoreDraft(parsed);
-                    draftBanner.style.setProperty('display', 'none', 'important');
-                    showDraftStatus('saved', 'Draft restored');
-                });
-
-                document.getElementById('clearDraftBtn').addEventListener('click', () => {
-                    discardDraft();
-                });
-            }
-        } catch (e) {
-            // Corrupted draft — clear it
-            localStorage.removeItem(DRAFT_KEY);
-        }
-    }
 
     // ── Check upload enforcement on page load ──
     checkUploadEnforcement();
@@ -1195,8 +942,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             Promise.race([savePromise, timeoutPromise])
                 .then(async (result) => {
-                    // Clear draft on successful save
-                    localStorage.removeItem(DRAFT_KEY);
 
                     // Track KPI metrics
                     if (typeof trackFormSaved === 'function') trackFormSaved();
