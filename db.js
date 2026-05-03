@@ -381,29 +381,35 @@ async function resetStuckUploading() {
  */
 async function initKPI() {
     if (typeof ACTIVE_PERIOD === 'undefined') return;
-    
+
     const periodId = ACTIVE_PERIOD.id;
+
+    // Guard: "none" is the placeholder used when no zone is selected (landing page).
+    // Never treat it as a real period — it would mismatch the stored period and
+    // trigger a destructive KPI reset + entry wipe on every bare index.html visit.
+    if (!periodId || periodId === 'none') return;
+
     let stored = localStorage.getItem('kpi_period_id');
-    
+
     if (stored !== periodId) {
         console.log('[KPI] New period detected. Resetting KPI counters and clearing uploaded/confirmed entries.');
-        
+
         // Reset KPIs
         localStorage.setItem('kpi_period_id', periodId);
         localStorage.setItem('kpi_total_recorded', '0');
         localStorage.setItem('kpi_total_uploaded', '0');
         localStorage.setItem('kpi_total_time_ms', '0');
         localStorage.setItem('kpi_time_entries_count', '0');
-        
+
         // Wipe uploaded and confirmed entries from IDB
         try {
             const db = await openDB();
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            
+
             const uploadedKeys = await tx.store.index('status').getAllKeys('uploaded');
             const confirmedKeys = await tx.store.index('status').getAllKeys('confirmed');
             const allKeys = [...uploadedKeys, ...confirmedKeys];
-            
+
             for (const key of allKeys) {
                 tx.store.delete(key);
             }
@@ -412,12 +418,13 @@ async function initKPI() {
         } catch (e) {
             console.warn('[KPI] Failed to clear old entries:', e);
         }
-        
+
         // Refresh UI if functions are available
         if (typeof updateStats === 'function') updateStats();
         if (typeof refreshList === 'function') refreshList();
     }
 }
+
 
 /** Called in app.js when form opens/resets */
 function trackFormStart() {
