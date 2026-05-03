@@ -346,9 +346,10 @@ async function retryAllFailed() {
  * Reset any entries stuck in "uploading" status back to "pending".
  * This happens when a page is navigated away during an upload.
  * Should be called on page load.
+ * @param {boolean} force - If true, resets ALL "uploading" entries regardless of timestamp.
  * @returns {Promise<number>} Number of entries reset
  */
-async function resetStuckUploading() {
+async function resetStuckUploading(force = false) {
     const db = await openDB();
     const stuck = await db.getAllFromIndex(STORE_NAME, 'status', 'uploading');
 
@@ -359,8 +360,8 @@ async function resetStuckUploading() {
     const STUCK_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
     for (const record of stuck) {
-        // If there's no timestamp, or it's older than 2 minutes, it's genuinely stuck
-        if (!record.uploadStartedAt || (Date.now() - record.uploadStartedAt) > STUCK_TIMEOUT_MS) {
+        // If force is true, or there's no timestamp, or it's older than 2 minutes, it's genuinely stuck
+        if (force || !record.uploadStartedAt || (Date.now() - record.uploadStartedAt) > STUCK_TIMEOUT_MS) {
             record.status = 'pending';
             record.error = null;
             tx.store.put(record);
@@ -408,7 +409,11 @@ async function initKPI() {
 
         // Reset KPIs
         localStorage.setItem('kpi_period_id', periodId);
-        localStorage.setItem('kpi_total_recorded', '0');
+        
+        // Carry over any unsent entries into the new period's "Recorded" count
+        // so the UI stays consistent with the list of entries visible on the device.
+        const carryOverCount = await getPendingCount();
+        localStorage.setItem('kpi_total_recorded', carryOverCount.toString());
         localStorage.setItem('kpi_total_uploaded', '0');
         localStorage.setItem('kpi_total_time_ms', '0');
         localStorage.setItem('kpi_time_entries_count', '0');

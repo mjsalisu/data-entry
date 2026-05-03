@@ -323,7 +323,7 @@ async function handleUploadAll() {
         console.error('Upload session crashed:', err);
         const errMsg = `[ERR_UPLOAD_INIT] Upload sequence crashed:\n${err.message}`;
         appendLog(`❌ ${errMsg}`, 'error');
-        alert(`${errMsg}\n\nDiag: Please refresh the page. If the issue persists, clear the app cache.`);
+        alert(`${errMsg}\n\nDiag: Please refresh the page. If the issue persists, contact support.`);
     }
 
     // Reset UI
@@ -346,6 +346,11 @@ async function handleUploadAll() {
             appendLog('ℹ️ No pending entries found.', 'info');
             showNotification('No pending entries to upload.');
         }
+    } else if (result === null) {
+        // uploadAll returns null if another tab is already uploading (lock contention)
+        // or if it's already running in the current tab.
+        appendLog('ℹ️ Upload already in progress in another tab.', 'warn');
+        showNotification('⚠️ Upload already in progress in another tab.');
     }
 }
 

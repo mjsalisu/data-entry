@@ -101,6 +101,28 @@ async function uploadAll() {
         console.log('[Uploader] Upload already in progress — skipping concurrent call.');
         return null;
     }
+
+    // ── Cross-Tab Lock ──
+    // Prevent multiple tabs from uploading simultaneously (which causes duplicates).
+    // Use Web Locks API if available, otherwise fallback to local tab lock only.
+    if (navigator.locks) {
+        return navigator.locks.request('dataentry_uploader_lock', { ifAvailable: true }, async (lock) => {
+            if (!lock) {
+                console.log('[Uploader] Another tab/window is already uploading. Skipping.');
+                return null;
+            }
+            return await _doUploadAll();
+        });
+    }
+
+    // Fallback for older browsers
+    return await _doUploadAll();
+}
+
+/**
+ * Internal upload runner — performs the actual work once locked.
+ */
+async function _doUploadAll() {
     // Generate a unique token for this upload session.
     // If another session somehow sneaks through, the status update will silently no-op.
     const sessionToken = Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -109,52 +131,57 @@ async function uploadAll() {
     _uploading = true;
     _paused = false;
 
-    // ── Screen Wake Lock ──
-    // Prevent iOS/Android from sleeping the screen while uploading
+    let result = null;
+
     try {
-        if ('wakeLock' in navigator) {
-            navigator.wakeLock.request('screen').then(lock => {
-                _wakeLock = lock;
-                console.log('Wake Lock active: Screen will stay on.');
-            }).catch(err => {
-                console.warn(`Wake Lock failed: ${err.message}`);
-            });
+        // Once we have the cross-tab lock, we are the only active upload session.
+        // It is now safe to force-reset any entries stuck in "uploading" status
+        // from previous crashes or page refreshes.
+        await resetStuckUploading(true);
+
+        // ── Screen Wake Lock ──
+        // Prevent iOS/Android from sleeping the screen while uploading
+        try {
+            if ('wakeLock' in navigator) {
+                navigator.wakeLock.request('screen').then(lock => {
+                    _wakeLock = lock;
+                    console.log('Wake Lock active: Screen will stay on.');
+                }).catch(err => {
+                    console.warn(`Wake Lock failed: ${err.message}`);
+                });
+            }
+        } catch (err) {
+            console.warn(`Wake Lock try/catch failed: ${err.message}`);
         }
-    } catch (err) {
-        console.warn(`Wake Lock try/catch failed: ${err.message}`);
-    }
 
-    // Load ONLY IDs — not full records with multi-MB images.
-    // Each full record is fetched one-at-a-time inside the loop below,
-    // so only one record's images are in RAM at any given time.
-    const pendingIds = await getPendingSubmissionIds();
-    if (pendingIds.length === 0) {
-        _uploading = false;
-        broadcastMessage('upload_complete', { uploaded: 0, failed: 0, total: 0 });
-        return { uploaded: 0, failed: 0, total: 0 };
-    }
+        // Load ONLY IDs — not full records with multi-MB images.
+        const pendingIds = await getPendingSubmissionIds();
+        if (pendingIds.length === 0) {
+            _uploading = false;
+            result = { uploaded: 0, failed: 0, total: 0 };
+            broadcastMessage('upload_complete', result);
+            return result;
+        }
 
-    _uploadProgress = { current: 0, total: pendingIds.length };
-    broadcastMessage('upload_started', { total: pendingIds.length });
+        _uploadProgress = { current: 0, total: pendingIds.length };
+        broadcastMessage('upload_started', { total: pendingIds.length });
 
-    // ── Initial jitter: short 500ms delay ──
-    // Makes the progress UI feel natural and prevents instantaneous lockups
-    const initialDelay = 500;
-    console.log(`Starting uploads in ${(initialDelay / 1000).toFixed(1)}s...`);
-    broadcastMessage('upload_progress', {
-        current: 0,
-        total: pendingIds.length,
-        entryId: null,
-        entryName: 'Waiting...',
-        status: 'scheduling'
-    });
-    await sleep(initialDelay);
+        // ── Initial jitter: short 500ms delay ──
+        const initialDelay = 500;
+        broadcastMessage('upload_progress', {
+            current: 0,
+            total: pendingIds.length,
+            entryId: null,
+            entryName: 'Waiting...',
+            status: 'scheduling'
+        });
+        await sleep(initialDelay);
 
-    let uploaded = 0;
-    let failed = 0;
-    let consecutiveFailures = 0;
+        let uploaded = 0;
+        let failed = 0;
+        let consecutiveFailures = 0;
 
-    for (const recordId of pendingIds) {
+        for (const recordId of pendingIds) {
         // Check if paused
         if (_paused) {
             broadcastMessage('upload_paused', {
@@ -279,30 +306,26 @@ async function uploadAll() {
         }
     }
 
-    _uploading = false;
-    _currentUploadId = null;
+        result = {
+            uploaded,
+            failed,
+            total: pendingIds.length
+        };
 
-    const result = {
-        uploaded,
-        failed,
-        total: pendingIds.length
-    };
+        broadcastMessage('upload_complete', result);
 
-    broadcastMessage('upload_complete', result);
+    } finally {
+        _uploading = false;
+        _currentUploadId = null;
 
-    // ── Post-cycle check removed ──
-    // Do NOT auto-restart uploadAll() here. Any entries saved while this cycle
-    // was running will be picked up by the next manual "Upload All" or auto-sync trigger.
-    // Recursively calling uploadAll() was causing duplicate uploads when two upload
-    // sessions overlapped.
-
-    // ── Release Wake Lock ──
-    if (_wakeLock !== null) {
-        try {
-            _wakeLock.release();
-            _wakeLock = null;
-            console.log('Wake Lock released.');
-        } catch (e) { }
+        // ── Release Wake Lock ──
+        if (_wakeLock !== null) {
+            try {
+                _wakeLock.release();
+                _wakeLock = null;
+                console.log('Wake Lock released.');
+            } catch (e) { }
+        }
     }
 
     return result;
@@ -315,6 +338,15 @@ async function uploadAll() {
  * @returns {Promise<boolean>} true if uploaded successfully
  */
 async function uploadSingle(id) {
+    if (navigator.locks) {
+        return navigator.locks.request('dataentry_uploader_lock', async () => {
+            return await _doUploadSingle(id);
+        });
+    }
+    return await _doUploadSingle(id);
+}
+
+async function _doUploadSingle(id) {
     const record = await getSubmission(id);
     if (!record) return false;
 

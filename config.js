@@ -95,7 +95,7 @@ const SCRIPT_URL = _zone ? _zone.scriptUrl : null;
 // Global Period Configuration — shared across all zones
 const GLOBAL_PERIOD = {
     id: "2026-05-01_2026-05-21",
-    name: "1st May to 21st May - 2026"
+    name: "1st May to 21st May, 2026"
 };
 
 // Backward-compatibility: ensure old code expecting zone.activePeriod doesn't crash
