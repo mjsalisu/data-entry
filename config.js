@@ -82,24 +82,27 @@ const ZONE_CONFIG = {
 // Zone Resolution
 // Priority: ?zone= URL param → sessionStorage → null (show landing)
 // ─────────────────────────────────────────────
+
+let _fallbackZoneKey = null;
+
 (function resolveZone() {
     const urlZone = new URLSearchParams(window.location.search).get('zone');
 
     if (urlZone && ZONE_CONFIG[urlZone]) {
         // Valid zone in URL — persist it and use it
-        sessionStorage.setItem('activeZone', urlZone);
+        try { sessionStorage.setItem('activeZone', urlZone); } catch (e) { _fallbackZoneKey = urlZone; }
     } else {
         // No ?zone= in the URL means the user navigated to the bare page
-        // (e.g. typed the URL, pressed the browser back button, or clicked
-        //  a "Change Zone" link). Clear the stored zone so the landing page
-        // appears. All in-app links already carry ?zone= via zoneUrl(), so
-        // this only triggers on intentional bare-URL visits.
-        sessionStorage.removeItem('activeZone');
+        try { sessionStorage.removeItem('activeZone'); } catch (e) { _fallbackZoneKey = null; }
     }
 })();
 
 function getActiveZoneKey() {
-    return sessionStorage.getItem('activeZone') || null;
+    try {
+        return sessionStorage.getItem('activeZone') || _fallbackZoneKey;
+    } catch (e) {
+        return _fallbackZoneKey;
+    }
 }
 
 function getActiveZone() {

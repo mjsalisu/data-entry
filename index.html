@@ -51,7 +51,7 @@
                 onmouseover="this.style.color='#0d6efd';this.style.borderColor='#0d6efd';"
                 onmouseout="this.style.color='#6c757d';this.style.borderColor='#dee2e6';"
                 title="Return to zone selection"
-                onclick="event.preventDefault(); sessionStorage.removeItem('activeZone'); window.location.replace('index.html?_reset=' + Date.now());">
+                onclick="event.preventDefault(); try { sessionStorage.removeItem('activeZone'); } catch (e) {} window.location.replace('index.html?_reset=' + Date.now());">
                 🗺️ Change Zone
               </a>
             </div>

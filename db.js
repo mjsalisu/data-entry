@@ -428,16 +428,19 @@ async function initKPI() {
 
 /** Called in app.js when form opens/resets */
 function trackFormStart() {
-    sessionStorage.setItem('form_start_ms', Date.now().toString());
+    try {
+        sessionStorage.setItem('form_start_ms', Date.now().toString());
+    } catch (e) {}
 }
 
 /** Called in app.js when form is saved to IDB */
 function trackFormSaved() {
-    let current = parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10);
-    localStorage.setItem('kpi_total_recorded', (current + 1).toString());
-    
-    let startMs = sessionStorage.getItem('form_start_ms');
-    if (startMs) {
+    try {
+        let current = parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10);
+        localStorage.setItem('kpi_total_recorded', (current + 1).toString());
+        
+        let startMs = sessionStorage.getItem('form_start_ms');
+        if (startMs) {
         let diff = Date.now() - parseInt(startMs, 10);
         // Only count if diff is reasonable (between 5 seconds and 1 hour)
         if (diff > 5000 && diff < 3600000) {
@@ -446,7 +449,7 @@ function trackFormSaved() {
             localStorage.setItem('kpi_total_time_ms', (totalTime + diff).toString());
             localStorage.setItem('kpi_time_entries_count', (count + 1).toString());
         }
-    }
+    } catch (e) {}
 }
 
 // Session-level set of UUIDs already counted as "uploaded" in KPI.

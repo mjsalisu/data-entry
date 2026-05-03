@@ -1203,8 +1203,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // Increment session save counter
                     const SESSION_COUNT_KEY = 'jobberman_submission_count';
-                    let count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
-                    sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
+                    let count = 1;
+                    try {
+                        count = parseInt(sessionStorage.getItem(SESSION_COUNT_KEY) || '0', 10) + 1;
+                        sessionStorage.setItem(SESSION_COUNT_KEY, count.toString());
+                    } catch (e) {}
 
                     // Show success screen, hide form
                     document.getElementById('dataForm').style.display = 'none';
@@ -1303,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resetCounterBtn = document.getElementById('resetCounterBtn');
     if (resetCounterBtn) {
         resetCounterBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('jobberman_submission_count');
+            try { sessionStorage.removeItem('jobberman_submission_count'); } catch (e) {}
             document.getElementById('submissionCount').textContent = '0';
         });
     }
