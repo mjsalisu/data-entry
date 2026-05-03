@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Entry Portal</title>
+  <title id="pageTitle">Data Entry Portal</title>
   <meta name="description" content="Jobberman BCWS Data Entry Portal — Offline-first form with bulk upload">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d6efd">
@@ -16,13 +16,45 @@
 
 <body class="bg-light">
 
+  <!-- ══════════════════════════════════════════════════════
+       ZONE SELECTION LANDING PAGE
+       Shown only when no ?zone= param is present.
+       Hidden once a zone is active.
+  ═══════════════════════════════════════════════════════ -->
+  <div id="zoneLandingPage" style="display:none;min-height:100vh;background:linear-gradient(160deg,#0d1b2a 0%,#1b263b 50%,#0d1b2a 100%);padding:40px 16px 100px;box-sizing:border-box;">
+    <div style="max-width:540px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:36px;">
+        <div style="font-size:2.8rem;margin-bottom:8px;">🗺️</div>
+        <h1 style="color:#e0e8ff;font-size:1.6rem;font-weight:800;margin:0 0 6px;">Jobberman BCWS</h1>
+        <p style="color:#8899b4;font-size:0.9rem;margin:0;">Select your deployment zone to begin data entry</p>
+      </div>
+      <div id="zoneCardGrid" style="display:flex;flex-direction:column;gap:14px;"></div>
+      <p style="color:#4a5568;text-align:center;font-size:0.75rem;margin-top:28px;">Each zone saves to a dedicated sheet. Select your assigned zone only.</p>
+    </div>
+  </div>
+
+  <!-- Main App (hidden on landing, shown when zone is active) -->
+  <div id="mainApp" style="display:none;">
   <div class="container py-5">
     <div class="row justify-content-center">
       <div class="col-lg-8 col-xl-7">
         <div class="card shadow-sm border-0">
           <div class="card-body p-4 p-md-5">
             <h2 class="text-center text-primary">Jobberman BCWS Data Entry</h2>
-            <p class="text-center text-primary mb-4">Building Careers for Workplace Success</p>
+            <p class="text-center text-primary mb-1">Building Careers for Workplace Success</p>
+            <!-- Zone Badge -->
+            <div id="zoneBadge" style="text-align:center;margin-bottom:16px;display:none;">
+              <span id="zoneBadgeInner" style="display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;color:#fff;letter-spacing:0.03em;"></span>
+              <br>
+              <a href="index.html" id="changeZoneLink"
+                style="font-size:0.72rem;color:#6c757d;text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:6px;padding:3px 10px;border:1px solid #dee2e6;border-radius:12px;transition:color 0.2s,border-color 0.2s;"
+                onmouseover="this.style.color='#0d6efd';this.style.borderColor='#0d6efd';"
+                onmouseout="this.style.color='#6c757d';this.style.borderColor='#dee2e6';"
+                title="Return to zone selection"
+                onclick="event.preventDefault(); sessionStorage.removeItem('activeZone'); window.location.replace('index.html?_reset=' + Date.now());">
+                🗺️ Change Zone
+              </a>
+            </div>
 
             <!-- Upload Nag Banner (shown when 10-29 entries pending) -->
             <div id="uploadNagBanner" style="display:none;">
@@ -30,7 +62,7 @@
                 <span style="font-size:1.5rem;">⚠️</span>
                 <div style="flex:1;">
                   <strong>Upload your entries!</strong><br>
-                  <span style="font-size:0.82rem;opacity:0.95;">You have <strong id="nagPendingCount">0</strong> entries waiting on this device. Connect to internet and <a href="queue.html" style="color:#fff;text-decoration:underline;font-weight:700;">upload now →</a></span>
+                  <span style="font-size:0.82rem;opacity:0.95;">You have <strong id="nagPendingCount">0</strong> entries waiting on this device. Connect to internet and <a id="nagQueueLink" href="queue.html" style="color:#fff;text-decoration:underline;font-weight:700;">upload now →</a></span>
                 </div>
               </div>
             </div>
@@ -47,7 +79,7 @@
                   <p style="color:#888;font-size:0.82rem;margin-bottom:20px;">
                     Data on your phone is at risk of loss. Upload now to secure it in the system.
                   </p>
-                  <a href="queue.html" style="display:block;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;margin-bottom:12px;box-shadow:0 4px 16px rgba(21,101,192,0.4);">
+                  <a id="gateQueueLink" href="queue.html" style="display:block;background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;padding:14px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;margin-bottom:12px;box-shadow:0 4px 16px rgba(21,101,192,0.4);">
                     📤 Go to Upload Queue
                   </a>
                   <button id="gateSkipBtn" disabled onclick="dismissUploadGate()" style="background:none;border:2px solid #ccc;color:#999;padding:10px 20px;border-radius:10px;font-size:0.82rem;width:100%;cursor:not-allowed;transition:all 0.3s;">
@@ -753,7 +785,7 @@
                 </div>
                 <div class="alert alert-info py-2 px-3 mb-3" style="font-size:0.85rem;">
                   📋 You have <strong id="pendingCountSuccess">0</strong> entries ready to upload.
-                  <a href="queue.html" class="fw-bold">Go to Upload Queue →</a>
+                  <a id="successQueueLink" href="queue.html" class="fw-bold">Go to Upload Queue →</a>
                 </div>
                 <div>
                   <button type="button" id="submitAnotherBtn" class="btn btn-primary w-100 py-3 fw-bold">
@@ -768,14 +800,15 @@
       </div>
     </div>
   </div>
+  </div><!-- /#mainApp -->
 
   <!-- Bottom Tab Bar (mobile-app style navigation) -->
   <nav class="bottom-tab-bar" id="bottomTabBar">
-    <a href="index.html" class="tab-item active" id="tabForm">
+    <a id="tabForm" href="index.html" class="tab-item active">
       <span class="tab-icon">📝</span>
       <span class="tab-label">Form</span>
     </a>
-    <a href="queue.html" class="tab-item" id="tabQueue">
+    <a id="tabQueue" href="queue.html" class="tab-item">
       <span class="tab-icon">📋</span>
       <span class="tab-label">Upload Queue</span>
       <span class="tab-badge" id="queueBadgeCount" style="display:none;">0</span>
@@ -785,6 +818,92 @@
   <script src="dist/js/bootstrap.bundle.min.js"></script>
   <script src="./dist/js/idb.umd.js"></script>
   <script src="config.js"></script>
+  <script>
+    // ── Zone Bootstrap (runs before any other JS) ──────────────────────────
+    (function initZone() {
+      const zone = getActiveZone();
+      const zoneKey = getActiveZoneKey();
+
+      if (!zone) {
+        // No zone selected — show landing page, hide app
+        document.getElementById('zoneLandingPage').style.display = 'block';
+        document.getElementById('bottomTabBar').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'none';
+
+        // Build zone cards
+        const grid = document.getElementById('zoneCardGrid');
+        Object.entries(ZONE_CONFIG).forEach(([key, z]) => {
+          const url = 'index.html?zone=' + encodeURIComponent(key);
+          const stateList = z.states.join(' · ');
+          const card = document.createElement('a');
+          card.href = url;
+          card.style.cssText = [
+            'display:flex;align-items:center;gap:16px;',
+            'background:rgba(255,255,255,0.05);',
+            'border:1px solid rgba(255,255,255,0.08);',
+            'border-radius:16px;padding:18px 20px;',
+            'text-decoration:none;',
+            'transition:transform 0.18s,box-shadow 0.18s,background 0.18s;',
+            'cursor:pointer;'
+          ].join('');
+          card.innerHTML =
+            '<div style="font-size:2.2rem;line-height:1;">' + z.emoji + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="color:#e0e8ff;font-weight:800;font-size:1.05rem;margin-bottom:4px;">' + z.label + '</div>' +
+              '<div style="color:#6b7fa3;font-size:0.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + stateList + '</div>' +
+            '</div>' +
+            '<div style="color:' + z.color + ';font-size:1.3rem;">›</div>';
+          // Hover effect via JS (avoids needing extra CSS)
+          card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.background = 'rgba(255,255,255,0.09)';
+            card.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4)';
+          });
+          card.addEventListener('mouseleave', () => {
+            card.style.transform = '';
+            card.style.background = 'rgba(255,255,255,0.05)';
+            card.style.boxShadow = '';
+          });
+          grid.appendChild(card);
+        });
+        // Clean up the URL — remove ?_reset= or any stale param so the
+        // address bar shows a clean 'index.html' without ugly query strings.
+        if (window.location.search) {
+          history.replaceState(null, '', 'index.html');
+        }
+        return; // stop — don't run app init
+      }
+
+      // Zone is active — show app, hide landing
+      document.getElementById('zoneLandingPage').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+
+      // Update page title
+      document.getElementById('pageTitle').textContent = zone.label + ' — BCWS Data Entry';
+
+      // Show zone badge
+      const badge = document.getElementById('zoneBadge');
+      const badgeInner = document.getElementById('zoneBadgeInner');
+      if (badge && badgeInner) {
+        badgeInner.style.background = zone.gradient;
+        badgeInner.innerHTML = zone.emoji + ' ' + zone.label + ' Zone';
+        badge.style.display = 'block';
+      }
+
+      // Wire all internal navigation links with zone param
+      const setHref = (id, page) => {
+        const el = document.getElementById(id);
+        if (el) el.href = zoneUrl(page);
+      };
+      setHref('tabForm',          'index.html');
+      setHref('tabQueue',         'queue.html');
+      setHref('nagQueueLink',     'queue.html');
+      setHref('gateQueueLink',    'queue.html');
+      setHref('successQueueLink', 'queue.html');
+
+      // Also update the empty-state back-to-form link in queue.html (handled in queue.html)
+    })();
+  </script>
   <script src="camera.js"></script>
   <script src="datepicker.js"></script>
   <!-- App Version Footer -->

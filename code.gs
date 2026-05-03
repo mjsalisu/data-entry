@@ -2,9 +2,11 @@
  * Handles incoming data from the external HTML form (Jobberman SST Data Entry)
  * Sheet: BCWS_Data
  *
- * LockService is enabled to serialize requests and prevent Google Drive
- * concurrency issues ("Service error: Drive") when creating folders and files
- * during high user load.
+ * LOCK-FREE DESIGN: LockService is intentionally NOT used.
+ * At 200+ concurrent users, any waitLock() call queues all requests and causes
+ * "Lock timeout" errors — losing submitted records entirely.
+ * Instead: appendRow() is atomic in Google Sheets, Drive files use UUID-based
+ * unique names, and duplicate prevention is handled client-side + via UUID check.
  */
 
 function doPost(e) {
@@ -21,40 +23,46 @@ function doPost(e) {
   }
 
   // ─────────────────────────────────────────────
-  // 1. Duplicate Detection — locked, fast, lightweight
-  //    Hold the lock ONLY for this check, then release immediately.
-  //    Drive uploads must NOT happen inside a lock — they are slow and
-  //    cause all concurrent users to queue up, triggering "Service error: Drive".
+  // 1. UUID Duplicate Check — lock-free, best-effort early exit.
+  //
+  //    WHY NO LOCK:
+  //    With 200+ concurrent users, LockService.waitLock() queues all requests.
+  //    Each request holds the lock for ~1-2s (sheet scan). With 50 concurrent
+  //    requests, the 16th request waits 15+ seconds and throws "Lock timeout" —
+  //    causing the entire submission to fail and the record to be LOST.
+  //
+  //    This check is a fast-path optimization, NOT the sole safety net.
+  //    True duplicate prevention relies on:
+  //      a) Client-side: unique UUIDs, session tokens, only-pending queue
+  //      b) Server-side: appendRow writes the UUID; the Verify action
+  //         confirms it; re-submitted UUIDs will hit this check on retry
+  //
+  //    Risk of skipping the lock: two concurrent requests with the SAME uuid
+  //    could both pass this check. This is extremely rare after client fixes,
+  //    and a duplicate row is far better than a lost record.
   // ─────────────────────────────────────────────
   if (data.uuid) {
-    const lock = LockService.getDocumentLock();
     try {
-      lock.waitLock(15000);
       const existingData = sheet.getDataRange().getValues();
       const uuidColIndex = 54; // Column BC (0-indexed)
       for (var i = 1; i < existingData.length; i++) {
         if (existingData[i][uuidColIndex] &&
             existingData[i][uuidColIndex].toString().trim() === data.uuid.trim()) {
-          lock.releaseLock();
           return ContentService
             .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
             .setMimeType(ContentService.MimeType.JSON);
         }
       }
-    } catch (lockError) {
-      // If we can't get the lock, proceed anyway — the UUID index will catch true duplicates
-      console.warn("UUID check lock timed out:", lockError.toString());
-    } finally {
-      try { lock.releaseLock(); } catch (e) { /* already released */ }
+    } catch (checkErr) {
+      // Non-fatal: if the check fails, proceed to write the record anyway
+      console.warn("UUID pre-check failed (non-fatal):", checkErr.toString());
     }
   }
 
   try {
     // ─────────────────────────────────────────────
-    // 2. Google Drive Image Uploads
-    //    Done OUTSIDE any lock — concurrent Drive writes are safe.
-    //    Each user writes to their own uniquely-named file (timestamp + UUID).
-    //    Retry with exponential backoff to handle transient "Service error: Drive".
+    // 2. Google Drive Image Uploads — fully concurrent, no lock needed.
+    //    Each file has a UUID-based unique name so parallel writes never collide.
     // ─────────────────────────────────────────────
     function getOrCreateFolder(parent, folderName, isRoot) {
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -86,8 +94,6 @@ function doPost(e) {
     let folder = getOrCreateFolder(monthFolder, stateName, false);
 
     const participantName = (data.name || 'Unknown').replace(/\s+/g, '_');
-    // Use UUID suffix (first 8 chars) to guarantee unique filenames even if
-    // two requests arrive at the same millisecond
     const uuidSuffix = data.uuid ? data.uuid.slice(0, 8) : Date.now().toString(36);
 
     function uploadImage(base64String, label) {
@@ -115,29 +121,12 @@ function doPost(e) {
     const posttestResult = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
-    // 3. APPEND ROW — with a final UUID re-check inside a lock.
-    //    WHY: Between step 1 (UUID check) and here, we spent 5-20s on Drive uploads.
-    //    A concurrent request for the same UUID could have passed step 1 too and is
-    //    about to appendRow simultaneously. The second lock + re-check closes this window.
+    // 3. APPEND ROW — no lock needed.
+    //    Google Sheets serializes concurrent appendRow() calls internally.
+    //    Holding a lock here at 200+ concurrency caused ALL the "Lock timeout"
+    //    errors and lost records. appendRow() is already atomic.
     // ─────────────────────────────────────────────
-    if (data.uuid) {
-      const appendLock = LockService.getDocumentLock();
-      try {
-        appendLock.waitLock(20000);
-        // Re-check UUID — another concurrent request may have appended it while we were uploading to Drive
-        const freshData = sheet.getDataRange().getValues();
-        const uuidColIndex = 54;
-        for (var j = 1; j < freshData.length; j++) {
-          if (freshData[j][uuidColIndex] &&
-              freshData[j][uuidColIndex].toString().trim() === data.uuid.trim()) {
-            appendLock.releaseLock();
-            return ContentService
-              .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
-              .setMimeType(ContentService.MimeType.JSON);
-          }
-        }
-        // UUID not found — safe to append. Do it inside the lock so we're atomic.
-        sheet.appendRow([
+    sheet.appendRow([
       new Date(),                       // A: Timestamp
 
       // ── Metadata & Consent ──────────────────
@@ -215,36 +204,7 @@ function doPost(e) {
       data.uuid               || '',    // BC: Submission UUID
     ]);
 
-        SpreadsheetApp.flush();
-      } catch (appendErr) {
-        throw appendErr; // Re-throw so outer catch can log it
-      } finally {
-        try { appendLock.releaseLock(); } catch (e) { /* already released */ }
-      }
-    } else {
-      // No UUID (legacy entry) — append without lock
-      sheet.appendRow([
-        new Date(),
-        data.consent || '', data.certificate_id || '', data.post_test_score || '',
-        data.inputted_by || '', data.jobberman_sst || '', data.name || '',
-        data.email || '', data.phone || '', data.phone_type || '', data.alt_phone || '',
-        data.address || '', data.gender || '', data.dob || '', data.qualification || '',
-        data.current_level || '', data.employment_status || '', data.current_occupation || '',
-        data.preferred_industry || '', data.preferred_job_role || '', data.top_skills || '',
-        data.income_range || '', data.state || '', data.training_details || '',
-        data.settlement || '', data.idp || '', data.disability || '', data.disability_type || '',
-        data.existing_business || '', data.business_nature || '', data.formal_training || '',
-        data.tech_access || '', data.internet_access || '', data.preferred_language || '',
-        data.prev_soft_skills || '', data.training_reason || '', data.confidence_level || '',
-        data.job_search_duration || '', data.job_search_challenge || '', data.desired_outcome || '',
-        data.has_cv || '', data.hall_rating || '', data.facilities_adequate || '',
-        data.ref_biscuit || '', data.ref_drink || '', data.ref_water || '',
-        data.refreshment_satisfaction || '', data.refreshment_enhanced || '',
-        data.facilitator_rating || '', pretestResult.url, pretestResult.path,
-        posttestResult.url, posttestResult.path, data.is_duplicate || '', ''
-      ]);
-      SpreadsheetApp.flush();
-    }
+    SpreadsheetApp.flush();
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "success" }))

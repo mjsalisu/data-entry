@@ -23,7 +23,7 @@
       <span class="status-dot online" id="statusDot"></span>
       <span class="status-text" id="statusText">Online</span>
     </div>
-    <h1 class="nav-title">Upload Queue</h1>
+    <h1 class="nav-title" id="queueNavTitle">Upload Queue</h1>
     <div style="width:70px;"></div> <!-- Spacer for centering -->
   </nav>
 
@@ -137,7 +137,7 @@
       <div class="empty-state" id="emptyState">
         <span class="empty-icon">📋</span>
         <p>No submissions yet</p>
-        <a href="index.html" class="btn-back-form">← Go to Form</a>
+        <a id="emptyStateBackLink" href="index.html" class="btn-back-form">← Go to Form</a>
       </div>
     </div>
 
@@ -218,11 +218,11 @@
   </div>
   <!-- Bottom Tab Bar (mobile-app style navigation) -->
   <nav class="bottom-tab-bar" id="bottomTabBar">
-    <a href="index.html" class="tab-item" id="tabForm">
+    <a id="tabForm" href="index.html" class="tab-item">
       <span class="tab-icon">📝</span>
       <span class="tab-label">Form</span>
     </a>
-    <a href="queue.html" class="tab-item active" id="tabQueue">
+    <a id="tabQueue" href="queue.html" class="tab-item active">
       <span class="tab-icon">📋</span>
       <span class="tab-label">Upload Queue</span>
       <span class="tab-badge" id="queueBadgeCount" style="display:none;">0</span>
@@ -232,6 +232,34 @@
   <script src="dist/js/bootstrap.bundle.min.js"></script>
   <script src="./dist/js/idb.umd.js"></script>
   <script src="config.js"></script>
+  <script>
+    // ── Zone Bootstrap (queue.html) ────────────────────────────────
+    (function initQueueZone() {
+      const zone = getActiveZone();
+      if (!zone) {
+        // No zone — redirect to landing page
+        window.location.replace('index.html');
+        return;
+      }
+
+      // Wire navigation links
+      const setHref = (id, page) => {
+        const el = document.getElementById(id);
+        if (el) el.href = zoneUrl(page);
+      };
+      setHref('tabForm',           'index.html');
+      setHref('tabQueue',          'queue.html');
+      setHref('emptyStateBackLink','index.html');
+
+      // Zone badge in nav title
+      const title = document.getElementById('queueNavTitle');
+      if (title) {
+        title.innerHTML = 'Upload Queue <span style="font-size:0.65rem;font-weight:700;background:' +
+          zone.gradient + ';color:#fff;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px;">' +
+          zone.emoji + ' ' + zone.label + '</span>';
+      }
+    })();
+  </script>
   <script src="db.js"></script>
   <script src="uploader.js"></script>
   <script src="queue.js"></script>

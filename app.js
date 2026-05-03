@@ -246,12 +246,34 @@ async function loadDynamicFields() {
     const loader = document.getElementById('dynamicFieldsLoader');
     const stateSelect = document.getElementById('state');
 
+    // Guard: on the landing page there is no active zone/SCRIPT_URL yet
+    if (!SCRIPT_URL) return;
+
     if (loader) loader.style.display = 'block';
     if (stateSelect) stateSelect.disabled = true;
 
     try {
         const resp = await fetch(SCRIPT_URL + '?action=getDynamicFields');
-        DYNAMIC_FIELDS = await resp.json();
+        const allFields = await resp.json();
+
+        // ── Zone-based State Filtering ───────────────────────────────────────────
+        // Only keep states that belong to this zone. This ensures:
+        //  a) The State dropdown shows only relevant options
+        //  b) Data can't be accidentally submitted to the wrong zone's sheet
+        const activeZone = getActiveZone();
+        if (activeZone && activeZone.states && activeZone.states.length > 0) {
+            const allowedStates = new Set(activeZone.states.map(s => s.trim().toLowerCase()));
+            DYNAMIC_FIELDS = {};
+            Object.keys(allFields).forEach(state => {
+                if (allowedStates.has(state.trim().toLowerCase())) {
+                    DYNAMIC_FIELDS[state] = allFields[state];
+                }
+            });
+        } else {
+            // No zone filter defined — use all states (fallback)
+            DYNAMIC_FIELDS = allFields;
+        }
+
         populateStates();
     } catch (err) {
         console.error('Failed to load dynamic fields:', err);
