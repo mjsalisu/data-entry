@@ -16,11 +16,6 @@ const ZONE_CONFIG = {
         color: "#0077b6",
         gradient: "linear-gradient(135deg,#0077b6,#023e8a)",
         scriptUrl: "https://script.google.com/macros/s/AKfycbwj61HfJ37mdh8_GY6dm4H7IVaGAh6WtRH4ir9XJV8sdf46f1Xe8OnLdQ1AuogbQCo3Aw/exec",
-        activePeriod: {
-            id: "2026-04-21_2026-05-20",
-            name: "21st April to 20th May",
-            description: "Payment Cycle — South-South"
-        },
         // Only these states will appear in the State dropdown for this zone
         states: ["Akwa Ibom", "Cross River", "Delta", "Edo"]
     },
@@ -30,11 +25,6 @@ const ZONE_CONFIG = {
         color: "#7b2d8b",
         gradient: "linear-gradient(135deg,#7b2d8b,#4a0072)",
         scriptUrl: "https://script.google.com/macros/s/AKfycbzgKfM6_Cqnei11tznrpYdIstVBk6tT__mKhQbpKRixuSGV2Yy4M9_oP-dvdV14NyyVTQ/exec",
-        activePeriod: {
-            id: "2026-04-21_2026-05-20",
-            name: "21st April to 20th May",
-            description: "Payment Cycle — South-West"
-        },
         states: ["Ogun", "Ondo", "Oyo"]
     },
     "south-east": {
@@ -43,11 +33,6 @@ const ZONE_CONFIG = {
         color: "#2d6a4f",
         gradient: "linear-gradient(135deg,#2d6a4f,#1b4332)",
         scriptUrl: "https://script.google.com/macros/s/AKfycbyT_a_B0aJPil60sl60u7cmTCpb8vrcmp8diHYRmL_STjsZkMu-t49o7hIRAlQ5AToT/exec",
-        activePeriod: {
-            id: "2026-04-21_2026-05-20",
-            name: "21st April to 20th May",
-            description: "Payment Cycle — South-East"
-        },
         states: ["Abia", "Enugu"]
     },
     "north-central": {
@@ -56,11 +41,6 @@ const ZONE_CONFIG = {
         color: "#c77800",
         gradient: "linear-gradient(135deg,#c77800,#7c4f00)",
         scriptUrl: "https://script.google.com/macros/s/AKfycby3UIbMOznzQB6G1XAPpipmdYKA9Tc_DDDZTYyoX4_y734HuB5GwdJZaBbgzHeG6uRvgA/exec",
-        activePeriod: {
-            id: "2026-04-21_2026-05-20",
-            name: "21st April to 20th May",
-            description: "Payment Cycle — North-Central"
-        },
         states: ["Benue", "Nasarawa"]
     },
     "north-west": {
@@ -69,11 +49,6 @@ const ZONE_CONFIG = {
         color: "#b5361d",
         gradient: "linear-gradient(135deg,#b5361d,#6d1e0e)",
         scriptUrl: "https://script.google.com/macros/s/AKfycbw12YIJPLst2mG7nerPmKU7q2z1HKchDu78M2N3sc6TlLLc-tMu7PfDps9ifJ41w92mkw/exec",
-        activePeriod: {
-            id: "2026-04-21_2026-05-20",
-            name: "21st April to 20th May",
-            description: "Payment Cycle — North-West"
-        },
         states: ["Kaduna", "Kano", "Katsina"]
     }
 };
@@ -116,7 +91,18 @@ function getActiveZone() {
 // ─────────────────────────────────────────────
 const _zone = getActiveZone();
 const SCRIPT_URL = _zone ? _zone.scriptUrl : null;
-const ACTIVE_PERIOD = _zone ? _zone.activePeriod : { id: "none", name: "—", description: "—" };
+
+// Global Period Configuration — shared across all zones
+const GLOBAL_PERIOD = {
+    id: "2026-04-21_2026-05-20",
+    name: "21st April to 20th May"
+};
+
+const ACTIVE_PERIOD = _zone ? {
+    id: GLOBAL_PERIOD.id,
+    name: GLOBAL_PERIOD.name,
+    description: "Payment Cycle — " + _zone.label
+} : { id: "none", name: "—", description: "—" };
 
 /**
  * Build a URL that preserves the current zone parameter.

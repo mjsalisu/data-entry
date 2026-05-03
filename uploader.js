@@ -345,7 +345,8 @@ async function uploadSingle(id) {
         await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(fullPayload),
-            mode: 'no-cors'
+            mode: 'no-cors',
+            keepalive: true
         }, 3);
 
         // POST succeeded — mark as confirmed immediately

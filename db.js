@@ -212,6 +212,9 @@ async function updateSubmissionStatus(id, status, error) {
     if (!record) return;
 
     record.status = status;
+    if (status === 'uploading') {
+        record.uploadStartedAt = Date.now();
+    }
     if (status === 'uploaded' || status === 'confirmed') {
         record.uploadedAt = new Date();
     }
@@ -242,7 +245,7 @@ async function deleteSubmission(id) {
 async function clearConfirmed() {
     const db = await openDB();
     const toClearKeys = await db.getAllKeysFromIndex(STORE_NAME, 'status', 'confirmed');
-    
+
     if (toClearKeys.length === 0) return 0;
 
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -326,9 +329,9 @@ async function retrySubmission(id) {
 async function retryAllFailed() {
     const db = await openDB();
     const failed = await db.getAllFromIndex(STORE_NAME, 'status', 'failed');
-    
+
     if (failed.length === 0) return 0;
-    
+
     const tx = db.transaction(STORE_NAME, 'readwrite');
     for (const record of failed) {
         record.status = 'pending';
@@ -348,24 +351,33 @@ async function retryAllFailed() {
 async function resetStuckUploading() {
     const db = await openDB();
     const stuck = await db.getAllFromIndex(STORE_NAME, 'status', 'uploading');
-    
+
     if (stuck.length === 0) return 0;
 
     const tx = db.transaction(STORE_NAME, 'readwrite');
+    let resetCount = 0;
+    const STUCK_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+
     for (const record of stuck) {
-        record.status = 'pending';
-        record.error = null;
-        tx.store.put(record);
+        // If there's no timestamp, or it's older than 2 minutes, it's genuinely stuck
+        if (!record.uploadStartedAt || (Date.now() - record.uploadStartedAt) > STUCK_TIMEOUT_MS) {
+            record.status = 'pending';
+            record.error = null;
+            tx.store.put(record);
+            resetCount++;
+        }
     }
-    
+
     try {
         await tx.done;
-        console.log('[DB] Reset ' + stuck.length + ' stuck uploading entries to pending');
+        if (resetCount > 0) {
+            console.log('[DB] Reset ' + resetCount + ' stuck uploading entries to pending');
+        }
     } catch (e) {
         console.warn('[DB] Failed to reset stuck uploading entries:', e.message);
     }
-    
-    return stuck.length;
+
+    return resetCount;
 }
 
 // migrateBlobsToBase64 function removed as all entries are now base64.
@@ -430,7 +442,7 @@ async function initKPI() {
 function trackFormStart() {
     try {
         sessionStorage.setItem('form_start_ms', Date.now().toString());
-    } catch (e) {}
+    } catch (e) { }
 }
 
 /** Called in app.js when form is saved to IDB */
@@ -438,61 +450,62 @@ function trackFormSaved() {
     try {
         let current = parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10);
         localStorage.setItem('kpi_total_recorded', (current + 1).toString());
-        
+
         let startMs = sessionStorage.getItem('form_start_ms');
         if (startMs) {
-        let diff = Date.now() - parseInt(startMs, 10);
-        // Only count if diff is reasonable (between 5 seconds and 1 hour)
-        if (diff > 5000 && diff < 3600000) {
-            let totalTime = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
-            let count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
-            localStorage.setItem('kpi_total_time_ms', (totalTime + diff).toString());
-            localStorage.setItem('kpi_time_entries_count', (count + 1).toString());
+            let diff = Date.now() - parseInt(startMs, 10);
+            // Only count if diff is reasonable (between 5 seconds and 1 hour)
+            if (diff > 5000 && diff < 3600000) {
+                let totalTime = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
+                let count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
+                localStorage.setItem('kpi_total_time_ms', (totalTime + diff).toString());
+                localStorage.setItem('kpi_time_entries_count', (count + 1).toString());
+            }
         }
-    } catch (e) {}
+    } catch (e) { }
 }
 
 // Session-level set of UUIDs already counted as "uploaded" in KPI.
 // Prevents retried entries from inflating the uploaded count.
 const _kpiCountedUuids = new Set();
 
-/** Called in uploader.js when an entry is successfully POSTed.
- * @param {string} [uuid] - The UUID of the uploaded entry (for deduplication).
- */
-function trackEntryUploaded(uuid) {
-    // If a UUID is provided and we've already counted it this session, skip.
-    if (uuid) {
-        if (_kpiCountedUuids.has(uuid)) {
-            console.log('[KPI] Skipping duplicate upload count for UUID:', uuid);
-            return;
+    /** Called in uploader.js when an entry is successfully POSTed.
+     * @param {string} [uuid] - The UUID of the uploaded entry (for deduplication).
+     */
+    function trackEntryUploaded(uuid) {
+        // If a UUID is provided and we've already counted it this session, skip.
+        if (uuid) {
+            if (_kpiCountedUuids.has(uuid)) {
+                console.log('[KPI] Skipping duplicate upload count for UUID:', uuid);
+                return;
+            }
+            _kpiCountedUuids.add(uuid);
         }
-        _kpiCountedUuids.add(uuid);
-    }
-    let current = parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10);
-    localStorage.setItem('kpi_total_uploaded', (current + 1).toString());
-}
-
-/** Get structured KPI data for the UI */
-function getKPIStats() {
-    const total_time_ms = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
-    const count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
-    
-    let avg_time_sec = 0;
-    if (count > 0) {
-        avg_time_sec = Math.round((total_time_ms / count) / 1000);
-    }
-    
-    let avg_time_str = '0s';
-    if (avg_time_sec > 0) {
-        let m = Math.floor(avg_time_sec / 60);
-        let s = avg_time_sec % 60;
-        avg_time_str = m > 0 ? m + 'm ' + s + 's' : s + 's';
+        let current = parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10);
+        localStorage.setItem('kpi_total_uploaded', (current + 1).toString());
     }
 
-    return {
-        recorded: parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10),
-        uploaded: parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10),
-        avgTime: avg_time_str,
-        periodName: typeof ACTIVE_PERIOD !== 'undefined' ? ACTIVE_PERIOD.name : 'Unknown'
-    };
-}
+    /** Get structured KPI data for the UI */
+    function getKPIStats() {
+        const total_time_ms = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
+        const count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
+
+        let avg_time_sec = 0;
+        if (count > 0) {
+            avg_time_sec = Math.round((total_time_ms / count) / 1000);
+        }
+
+        let avg_time_str = '0s';
+        if (avg_time_sec > 0) {
+            let m = Math.floor(avg_time_sec / 60);
+            let s = avg_time_sec % 60;
+            avg_time_str = m > 0 ? m + 'm ' + s + 's' : s + 's';
+        }
+
+        return {
+            recorded: parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10),
+            uploaded: parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10),
+            avgTime: avg_time_str,
+            periodName: typeof ACTIVE_PERIOD !== 'undefined' ? ACTIVE_PERIOD.name : 'Unknown'
+        };
+    }
