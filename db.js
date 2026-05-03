@@ -492,6 +492,18 @@ const _kpiCountedUuids = new Set();
 
     /** Get structured KPI data for the UI */
     function getKPIStats() {
+        let recorded = parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10);
+        const uploaded = parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10);
+
+        // ── Data Integrity Safety ──
+        // You cannot have more uploaded entries than recorded ones.
+        // If they fall out of sync (e.g. due to manual period ID changes in config.js),
+        // we auto-align the recorded count to match the uploaded count.
+        if (uploaded > recorded) {
+            recorded = uploaded;
+            localStorage.setItem('kpi_total_recorded', recorded.toString());
+        }
+
         const total_time_ms = parseInt(localStorage.getItem('kpi_total_time_ms') || '0', 10);
         const count = parseInt(localStorage.getItem('kpi_time_entries_count') || '0', 10);
 
@@ -508,9 +520,9 @@ const _kpiCountedUuids = new Set();
         }
 
         return {
-            recorded: parseInt(localStorage.getItem('kpi_total_recorded') || '0', 10),
-            uploaded: parseInt(localStorage.getItem('kpi_total_uploaded') || '0', 10),
+            recorded: recorded,
+            uploaded: uploaded,
             avgTime: avg_time_str,
-            periodName: typeof ACTIVE_PERIOD !== 'undefined' ? ACTIVE_PERIOD.name : 'Unknown'
+            periodName: typeof GLOBAL_PERIOD !== 'undefined' ? GLOBAL_PERIOD.name : (typeof ACTIVE_PERIOD !== 'undefined' ? ACTIVE_PERIOD.name : 'Unknown')
         };
     }
