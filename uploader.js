@@ -318,6 +318,13 @@ async function uploadSingle(id) {
     const record = await getSubmission(id);
     if (!record) return false;
 
+    // RACE CONDITION GUARD: If this entry is already being uploaded by uploadAll()
+    // or another uploadSingle() process, abort immediately to prevent duplicates.
+    if (record.status === 'uploading') {
+        console.log('[uploadSingle] Aborting - Entry ' + id + ' is already uploading.');
+        return false;
+    }
+
     try {
         await updateSubmissionStatus(id, 'uploading', null);
 
