@@ -94,9 +94,14 @@ const SCRIPT_URL = _zone ? _zone.scriptUrl : null;
 
 // Global Period Configuration — shared across all zones
 const GLOBAL_PERIOD = {
-    id: "2026-04-21_2026-05-20",
-    name: "21st April to 20th May"
+    id: "2026-05-01_2026-05-21",
+    name: "1st May to 21st May - 2026"
 };
+
+// Backward-compatibility: ensure old code expecting zone.activePeriod doesn't crash
+Object.values(ZONE_CONFIG).forEach(z => {
+    z.activePeriod = GLOBAL_PERIOD;
+});
 
 const ACTIVE_PERIOD = _zone ? {
     id: GLOBAL_PERIOD.id,
@@ -130,7 +135,7 @@ const STATE_CODES = {
     "Kaduna": "KD",
     "Kano": "KN",
     "Katsina": "KT",
-    "Nasarawa": "NA",
+    "Nasarawa": "NS",
     "Ogun": "OG",
     "Ondo": "ON",
     "Oyo": "OY"
