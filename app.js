@@ -987,12 +987,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         delete payload.image_pretest;
         delete payload.image_posttest;
 
-        // Wrap saveSubmission in a race timeout so it doesn't hang forever if iOS IndexedDB freezes
+        // Wrap saveSubmission in a race timeout so it doesn't hang forever if IndexedDB freezes
         const savePromise = saveSubmission(payload, images);
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => {
-                reject(new Error('Storage is busy or full (iOS bug). Please restart your browser or free up space and try again.'));
-            }, 8000);
+                reject(new Error('Storage is busy or taking too long. Please restart your browser or free up space and try again.'));
+            }, 25000);
         });
 
         try {
