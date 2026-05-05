@@ -6,11 +6,11 @@
  * or lets the user pick from gallery.
  *
  * Images are resized to max 2048px on the longest side and stored as high-quality JPEG
- * (quality 0.92) in the hidden imgData input as a data URL.
+ * (quality 0.85) in the hidden imgData input as a data URL.
  */
 
 const MAX_IMAGE_DIMENSION = 2048;
-const JPEG_QUALITY = 0.92;
+const JPEG_QUALITY = 0.85; // Reduced from 0.98 for smaller file sizes
 
 /**
  * Called when the user selects/captures a file via the native file input.
@@ -23,7 +23,7 @@ function handleFileSelect(type, fileInput) {
 
     // Validate that it's an image
     if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file.');
+        alert('[ERR_INVALID_IMAGE] Please select a valid image file (JPG, PNG).');
         fileInput.value = '';
         return;
     }

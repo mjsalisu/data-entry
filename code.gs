@@ -1,60 +1,130 @@
 /**
  * Handles incoming data from the external HTML form (Jobberman SST Data Entry)
  * Sheet: BCWS_Data
+ *
+ * LOCK-FREE DESIGN: LockService is intentionally NOT used.
+ * At 200+ concurrent users, any waitLock() call queues all requests and causes
+ * "Lock timeout" errors — losing submitted records entirely.
+ * Instead: appendRow() is atomic in Google Sheets, Drive files use UUID-based
+ * unique names, and duplicate prevention is handled client-side + via UUID check.
  */
+
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('BCWS_Data') || ss.insertSheet('BCWS_Data');
 
+  let data;
   try {
-    // 1. Parse the JSON payload from the external site
-    const data = JSON.parse(e.postData.contents);
+    data = JSON.parse(e.postData.contents);
+  } catch (parseErr) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", error: "Invalid JSON payload." }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
+  // ─────────────────────────────────────────────
+  // 1. UUID Duplicate Check — lock-free, best-effort early exit.
+  //
+  //    WHY NO LOCK:
+  //    With 200+ concurrent users, LockService.waitLock() queues all requests.
+  //    Each request holds the lock for ~1-2s (sheet scan). With 50 concurrent
+  //    requests, the 16th request waits 15+ seconds and throws "Lock timeout" —
+  //    causing the entire submission to fail and the record to be LOST.
+  //
+  //    This check is a fast-path optimization, NOT the sole safety net.
+  //    True duplicate prevention relies on:
+  //      a) Client-side: unique UUIDs, session tokens, only-pending queue
+  //      b) Server-side: appendRow writes the UUID; the Verify action
+  //         confirms it; re-submitted UUIDs will hit this check on retry
+  //
+  //    Risk of skipping the lock: two concurrent requests with the SAME uuid
+  //    could both pass this check. This is extremely rare after client fixes,
+  //    and a duplicate row is far better than a lost record.
+  // ─────────────────────────────────────────────
+  if (data.uuid) {
+    try {
+      const existingData = sheet.getDataRange().getValues();
+      const uuidColIndex = 54; // Column BC (0-indexed)
+      for (var i = 1; i < existingData.length; i++) {
+        if (existingData[i][uuidColIndex] &&
+            existingData[i][uuidColIndex].toString().trim() === data.uuid.trim()) {
+          return ContentService
+            .createTextOutput(JSON.stringify({ status: "success", duplicate: true }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    } catch (checkErr) {
+      // Non-fatal: if the check fails, proceed to write the record anyway
+      console.warn("UUID pre-check failed (non-fatal):", checkErr.toString());
+    }
+  }
+
+  try {
     // ─────────────────────────────────────────────
-    // 2. Google Drive Image Uploads (PreTest & PostTest)
+    // 2. Google Drive Image Uploads — fully concurrent, no lock needed.
+    //    Each file has a UUID-based unique name so parallel writes never collide.
     // ─────────────────────────────────────────────
-    // Root folder
+    function getOrCreateFolder(parent, folderName, isRoot) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          let folders = isRoot
+            ? DriveApp.getFoldersByName(folderName)
+            : parent.getFoldersByName(folderName);
+          if (folders.hasNext()) return folders.next();
+          return isRoot
+            ? DriveApp.createFolder(folderName)
+            : parent.createFolder(folderName);
+        } catch (driveErr) {
+          if (attempt === 4) throw driveErr;
+          Utilities.sleep(Math.min(1000 * Math.pow(2, attempt), 16000) + Math.random() * 2000);
+        }
+      }
+    }
+
     const rootFolderName = "Participant_Snapshots";
-    let rootFolders = DriveApp.getFoldersByName(rootFolderName);
-    let rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(rootFolderName);
+    let rootFolder = getOrCreateFolder(null, rootFolderName, true);
 
-    // Month subfolder (e.g. "March_2026")
     const months = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
     const now = new Date();
     const monthFolderName = months[now.getMonth()] + '_' + now.getFullYear();
-    let monthFolders = rootFolder.getFoldersByName(monthFolderName);
-    let monthFolder = monthFolders.hasNext() ? monthFolders.next() : rootFolder.createFolder(monthFolderName);
+    let monthFolder = getOrCreateFolder(rootFolder, monthFolderName, false);
 
-    // State subfolder (e.g. "Kano")
     const stateName = (data.state || 'Unknown_State').trim();
-    let stateFolders = monthFolder.getFoldersByName(stateName);
-    let folder = stateFolders.hasNext() ? stateFolders.next() : monthFolder.createFolder(stateName);
+    let folder = getOrCreateFolder(monthFolder, stateName, false);
 
     const participantName = (data.name || 'Unknown').replace(/\s+/g, '_');
-    const timestamp = new Date().getTime();
+    const uuidSuffix = data.uuid ? data.uuid.slice(0, 8) : Date.now().toString(36);
 
     function uploadImage(base64String, label) {
-      if (!base64String || base64String.trim() === '') return { url: '', path: '' };
-      try {
-        const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
-        const bytes = Utilities.base64Decode(base64String.split(",")[1]);
-        const fileName = `${participantName}_${label}_${timestamp}.jpg`;
-        const blob = Utilities.newBlob(bytes, contentType, fileName);
-        const file = folder.createFile(blob);
-        const filePath = `${rootFolderName}/${monthFolderName}/${stateName}/${fileName}`;
-        return { url: file.getUrl(), path: filePath };
-      } catch (imgErr) {
-        return { url: `Upload Error: ${imgErr.message}`, path: '' };
+      if (!base64String || typeof base64String !== 'string' || base64String.trim() === '') {
+        return { url: '', path: '' };
       }
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const contentType = base64String.split(",")[0].split(":")[1].split(";")[0];
+          const bytes = Utilities.base64Decode(base64String.split(",")[1]);
+          const fileName = `${participantName}_${label}_${uuidSuffix}.jpg`;
+          const blob = Utilities.newBlob(bytes, contentType, fileName);
+          const file = folder.createFile(blob);
+          const filePath = `${rootFolderName}/${monthFolderName}/${stateName}/${fileName}`;
+          return { url: file.getUrl(), path: filePath };
+        } catch (imgErr) {
+          if (attempt === 3) return { url: `Upload Error: ${imgErr.message}`, path: '' };
+          Utilities.sleep(Math.min(1000 * Math.pow(2, attempt), 8000) + Math.random() * 1000);
+        }
+      }
+      return { url: '', path: '' };
     }
 
     const pretestResult  = uploadImage(data.image_pretest,  'PreTest');
     const posttestResult = uploadImage(data.image_posttest, 'PostTest');
 
     // ─────────────────────────────────────────────
-    // 3. Append Row to Google Sheet (BCWS_Data)
-    //    Column order matches the headers visible in the sheet screenshot.
+    // 3. APPEND ROW — no lock needed.
+    //    Google Sheets serializes concurrent appendRow() calls internally.
+    //    Holding a lock here at 200+ concurrency caused ALL the "Lock timeout"
+    //    errors and lost records. appendRow() is already atomic.
     // ─────────────────────────────────────────────
     sheet.appendRow([
       new Date(),                       // A: Timestamp
@@ -129,7 +199,12 @@ function doPost(e) {
 
       // ── Duplicate Flag ──────────────────────
       data.is_duplicate       || '',    // BB: Is this a duplicate?
+
+      // ── Submission UUID (offline-first tracking) ──
+      data.uuid               || '',    // BC: Submission UUID
     ]);
+
+    SpreadsheetApp.flush();
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "success" }))
@@ -138,13 +213,23 @@ function doPost(e) {
   } catch (err) {
     // Log errors to a separate 'Errors' sheet for debugging
     const errSheet = ss.getSheetByName('Errors') || ss.insertSheet('Errors');
-    errSheet.appendRow([new Date(), err.toString(), e.postData.contents]);
+
+    let errorPayload = e.postData && e.postData.contents ? e.postData.contents : "";
+    try {
+      let parsedPayload = JSON.parse(errorPayload);
+      delete parsedPayload.image_pretest;
+      delete parsedPayload.image_posttest;
+      errorPayload = JSON.stringify(parsedPayload);
+    } catch (parseErr) { /* leave as-is */ }
+
+    errSheet.appendRow([new Date(), err.toString(), errorPayload]);
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
 
 /**
  * Handles GET requests.
@@ -153,6 +238,38 @@ function doPost(e) {
  */
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || '';
+
+  if (action === 'verify') {
+    var uuid = (e.parameter.uuid || '').trim();
+    if (!uuid) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ found: false, error: 'No UUID provided' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('BCWS_Data');
+    if (!sheet) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ found: false, error: 'Sheet not found' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // BC column (index 54, 0-based) contains the UUID
+    var data = sheet.getDataRange().getValues();
+    var uuidColIndex = 54; // Column BC (0-indexed)
+    var found = false;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][uuidColIndex] && data[i][uuidColIndex].toString().trim() === uuid) {
+        found = true;
+        break;
+      }
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ found: found }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   if (action === 'getDynamicFields') {
     var ss    = SpreadsheetApp.getActiveSpreadsheet();

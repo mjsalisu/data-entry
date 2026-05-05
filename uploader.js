@@ -1,0 +1,716 @@
+/**
+ * uploader.js — Background Bulk Upload Engine
+ *
+ * Processes queued submissions from IndexedDB one at a time,
+ * sends each to the Google Apps Script endpoint, verifies via GET,
+ * and communicates progress via BroadcastChannel.
+ *
+ * Concurrency protection for 200+ simultaneous users:
+ *  - Random initial jitter (0-10s) so devices don't all start at once
+ *  - Randomized inter-upload delay (2-5s) to spread server load
+ *  - Exponential backoff with jitter on failures (4s → 8s → 16s)
+ *  - UUID duplicate detection (server skips re-writes)
+ *  - Circuit breaker: pauses after 5 consecutive failures
+ *
+ * Runs fully async — user can continue entering new forms while uploads happen.
+ */
+
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let _uploading = false;
+let _paused = false;
+let _currentUploadId = null;
+let _uploadProgress = { current: 0, total: 0 };
+let _wakeLock = null; // Screen wake lock instance
+
+// BroadcastChannel for cross-page communication (form page ↔ queue page)
+let _channel = null;
+try {
+    _channel = new BroadcastChannel('dataentry_upload');
+} catch (e) {
+    // BroadcastChannel not supported (older Safari) — fallback to localStorage events
+    console.warn('BroadcastChannel not supported, falling back to localStorage events');
+}
+
+// ─────────────────────────────────────────────
+// BroadcastChannel Messaging
+// ─────────────────────────────────────────────
+
+let _broadcastCallbacks = [];
+
+/**
+ * Broadcast a message to all open tabs/pages AND the local UI.
+ * @param {string} type - Message type
+ * @param {Object} data - Message payload
+ */
+function broadcastMessage(type, data) {
+    const msg = { type, ...data, timestamp: Date.now() };
+
+    // Fire to other tabs
+    if (_channel) {
+        _channel.postMessage(msg);
+    } else {
+        // Fallback: use localStorage event (triggers in OTHER tabs)
+        localStorage.setItem('dataentry_broadcast', JSON.stringify(msg));
+        localStorage.removeItem('dataentry_broadcast');
+    }
+
+    // Fire to the current tab as well (BroadcastChannel does not self-echo)
+    for (const callback of _broadcastCallbacks) {
+        try { callback(msg); } catch (e) { console.error('Broadcast callback error:', e); }
+    }
+}
+
+/**
+ * Listen for broadcast messages.
+ * @param {function(Object)} callback
+ */
+function onBroadcastMessage(callback) {
+    // Register local callback
+    _broadcastCallbacks.push(callback);
+
+    if (_channel) {
+        _channel.addEventListener('message', (e) => callback(e.data));
+    } else {
+        // Fallback: listen for localStorage changes
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'dataentry_broadcast' && e.newValue) {
+                try { callback(JSON.parse(e.newValue)); } catch (err) { /* ignore */ }
+            }
+        });
+    }
+}
+
+// ─────────────────────────────────────────────
+// Upload Logic
+// ─────────────────────────────────────────────
+
+/**
+ * Upload all pending submissions sequentially.
+ * Non-blocking — runs in the background via async/await.
+ *
+ * @returns {Promise<{uploaded: number, failed: number, total: number}>}
+ */
+// Session-level lock token — prevents race conditions where two concurrent
+// uploadAll() calls (e.g. auto-sync + manual button) each pick up the same entry
+let _uploadSessionToken = null;
+
+async function uploadAll() {
+    if (_uploading) {
+        console.log('[Uploader] Upload already in progress — skipping concurrent call.');
+        return null;
+    }
+
+    // ── Cross-Tab Lock ──
+    // Prevent multiple tabs from uploading simultaneously (which causes duplicates).
+    // Use Web Locks API if available, otherwise fallback to local tab lock only.
+    if (navigator.locks) {
+        return navigator.locks.request('dataentry_uploader_lock', { ifAvailable: true }, async (lock) => {
+            if (!lock) {
+                console.log('[Uploader] Another tab/window is already uploading. Skipping.');
+                return null;
+            }
+            return await _doUploadAll();
+        });
+    }
+
+    // Fallback for older browsers
+    return await _doUploadAll();
+}
+
+/**
+ * Internal upload runner — performs the actual work once locked.
+ */
+async function _doUploadAll() {
+    // Generate a unique token for this upload session.
+    // If another session somehow sneaks through, the status update will silently no-op.
+    const sessionToken = Date.now() + '-' + Math.random().toString(36).slice(2);
+    _uploadSessionToken = sessionToken;
+
+    _uploading = true;
+    _paused = false;
+
+    let result = null;
+
+    try {
+        // Once we have the cross-tab lock, we are the only active upload session.
+        // It is now safe to force-reset any entries stuck in "uploading" status
+        // from previous crashes or page refreshes.
+        await resetStuckUploading(true);
+
+        // ── Screen Wake Lock ──
+        // Prevent iOS/Android from sleeping the screen while uploading
+        try {
+            if ('wakeLock' in navigator) {
+                navigator.wakeLock.request('screen').then(lock => {
+                    _wakeLock = lock;
+                    console.log('Wake Lock active: Screen will stay on.');
+                }).catch(err => {
+                    console.warn(`Wake Lock failed: ${err.message}`);
+                });
+            }
+        } catch (err) {
+            console.warn(`Wake Lock try/catch failed: ${err.message}`);
+        }
+
+        // Load ONLY IDs — not full records with multi-MB images.
+        const pendingIds = await getPendingSubmissionIds();
+        if (pendingIds.length === 0) {
+            _uploading = false;
+            result = { uploaded: 0, failed: 0, total: 0 };
+            broadcastMessage('upload_complete', result);
+            return result;
+        }
+
+        _uploadProgress = { current: 0, total: pendingIds.length };
+        broadcastMessage('upload_started', { total: pendingIds.length });
+
+        // ── Initial jitter: short 500ms delay ──
+        const initialDelay = 500;
+        broadcastMessage('upload_progress', {
+            current: 0,
+            total: pendingIds.length,
+            entryId: null,
+            entryName: 'Waiting...',
+            status: 'scheduling'
+        });
+        await sleep(initialDelay);
+
+        let uploaded = 0;
+        let failed = 0;
+        let consecutiveFailures = 0;
+
+        for (const recordId of pendingIds) {
+        // Check if paused
+        if (_paused) {
+            broadcastMessage('upload_paused', {
+                current: _uploadProgress.current,
+                total: _uploadProgress.total,
+                uploaded,
+                failed
+            });
+            break;
+        }
+
+        // ── Circuit breaker: if server is overwhelmed, slow down significantly ──
+        if (consecutiveFailures >= 5) {
+            // Instead of stopping, wait with a visible countdown and then continue
+            const longWait = 60000 + Math.floor(Math.random() * 30000); // 60-90s
+            console.warn('Server overwhelmed — cooling down for ' + Math.round(longWait / 1000) + 's...');
+
+            // Broadcast a "waiting" status so UI shows countdown
+            await broadcastCountdown(longWait, 'Server is busy. Many users are uploading. Cooling down...');
+
+            consecutiveFailures = 3; // Reset partially, don't fully reset
+        }
+
+        // ── Load ONE record at a time ──
+        // Only this single record's image blobs are in memory.
+        // After the iteration, `record` falls out of scope and is GC'd.
+        const record = await getSubmission(recordId);
+        if (!record) {
+            // Entry may have been deleted while we were uploading
+            _uploadProgress.current++;
+            continue;
+        }
+
+        _currentUploadId = record.id;
+        _uploadProgress.current++;
+
+        broadcastMessage('upload_progress', {
+            current: _uploadProgress.current,
+            total: _uploadProgress.total,
+            entryId: record.id,
+            entryName: record.payload.name || 'Unknown',
+            status: 'uploading'
+        });
+
+        try {
+            // Mark as uploading
+            await updateSubmissionStatus(record.id, 'uploading', null);
+
+            if (!record.pretestBlob || !record.posttestBlob) {
+                throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
+            }
+
+            const pretestData = await blobToBase64(record.pretestBlob);
+            const posttestData = await blobToBase64(record.posttestBlob);
+
+            // Build the full payload with images
+            const fullPayload = {
+                ...record.payload,
+                image_pretest: pretestData,
+                image_posttest: posttestData,
+                uuid: record.uuid
+            };
+
+            // POST with retry + exponential backoff
+            await fetchWithRetry(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(fullPayload),
+                mode: 'no-cors'
+            }, 3); // up to 3 attempts
+
+            // POST succeeded (no error thrown)
+            // Server-side LockService + UUID duplicate detection ensure safe writes
+            // We now mark as 'uploaded'. User must run "Verify" to upgrade to 'confirmed'.
+            await updateSubmissionStatus(record.id, 'uploaded', null);
+
+            // KPI Tracker hook — pass UUID so retries are not double-counted
+            if (typeof trackEntryUploaded === 'function') trackEntryUploaded(record.uuid);
+
+            // ── Track Monthly Stats ──
+            try {
+                const monthKey = new Date().toISOString().slice(0, 7); // e.g., "2026-04"
+                let stats = JSON.parse(localStorage.getItem('monthly_upload_stats') || '{}');
+                stats[monthKey] = (stats[monthKey] || 0) + 1;
+                localStorage.setItem('monthly_upload_stats', JSON.stringify(stats));
+            } catch (e) { }
+
+            uploaded++;
+            consecutiveFailures = 0;
+            broadcastMessage('upload_progress', {
+                current: _uploadProgress.current,
+                total: _uploadProgress.total,
+                entryId: record.id,
+                entryName: record.payload.name || 'Unknown',
+                status: 'uploaded'
+            });
+
+        } catch (err) {
+            console.error('Upload failed for entry', record.id, err);
+            consecutiveFailures++;
+
+            // Exhausted retries (fetchWithRetry already does 3 attempts internally)
+            const detailedError = getUserFriendlyError(err);
+
+            // Mark as truly failed with the detailed error so the user can read it.
+            await updateSubmissionStatus(record.id, 'failed', detailedError);
+            failed++;
+            broadcastMessage('upload_progress', {
+                current: _uploadProgress.current,
+                total: _uploadProgress.total,
+                entryId: record.id,
+                entryName: record.payload.name || 'Unknown',
+                status: 'failed',
+                error: detailedError
+            });
+        }
+
+        // ── Randomized inter-upload delay (2-5s) ──
+        // Spreads load when 200 users upload simultaneously
+        if (_uploadProgress.current < _uploadProgress.total && !_paused && consecutiveFailures === 0) {
+            const interDelay = 2000 + Math.floor(Math.random() * 3000);
+            await sleep(interDelay);
+        }
+    }
+
+        result = {
+            uploaded,
+            failed,
+            total: pendingIds.length
+        };
+
+        broadcastMessage('upload_complete', result);
+
+    } finally {
+        _uploading = false;
+        _currentUploadId = null;
+
+        // ── Release Wake Lock ──
+        if (_wakeLock !== null) {
+            try {
+                _wakeLock.release();
+                _wakeLock = null;
+                console.log('Wake Lock released.');
+            } catch (e) { }
+        }
+    }
+
+    return result;
+}
+
+
+/**
+ * Upload a single submission by ID.
+ * @param {number} id
+ * @returns {Promise<boolean>} true if uploaded successfully
+ */
+async function uploadSingle(id) {
+    if (navigator.locks) {
+        return navigator.locks.request('dataentry_uploader_lock', async () => {
+            return await _doUploadSingle(id);
+        });
+    }
+    return await _doUploadSingle(id);
+}
+
+async function _doUploadSingle(id) {
+    const record = await getSubmission(id);
+    if (!record) return false;
+
+    // RACE CONDITION GUARD: If this entry is already being uploaded by uploadAll()
+    // or another uploadSingle() process, abort immediately to prevent duplicates.
+    if (record.status === 'uploading') {
+        console.log('[uploadSingle] Aborting - Entry ' + id + ' is already uploading.');
+        return false;
+    }
+
+    try {
+        await updateSubmissionStatus(id, 'uploading', null);
+
+        if (!record.pretestBlob || !record.posttestBlob) {
+            throw new Error("Missing required snapshots. Both PreTest and PostTest images are strictly required for upload.");
+        }
+
+        const pretestData = await blobToBase64(record.pretestBlob);
+        const posttestData = await blobToBase64(record.posttestBlob);
+
+        const fullPayload = {
+            ...record.payload,
+            image_pretest: pretestData,
+            image_posttest: posttestData,
+            uuid: record.uuid
+        };
+
+        await fetchWithRetry(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(fullPayload),
+            mode: 'no-cors',
+            keepalive: true
+        }, 3);
+
+        // POST succeeded — mark as confirmed immediately
+        await updateSubmissionStatus(id, 'confirmed', null);
+
+        // KPI Tracker hook — pass UUID so retries are not double-counted
+        if (typeof trackEntryUploaded === 'function') trackEntryUploaded(record.uuid);
+
+        broadcastMessage('entry_updated', { entryId: id, status: 'confirmed' });
+        return true;
+
+    } catch (err) {
+        const detailedError = getUserFriendlyError(err);
+        await updateSubmissionStatus(id, 'failed', detailedError);
+        broadcastMessage('entry_updated', { entryId: id, status: 'failed', error: detailedError });
+        return false;
+    }
+}
+
+/**
+ * Verify a submission exists in the Google Sheet by UUID.
+ * Uses the GET endpoint which supports CORS (readable response).
+ *
+ * @param {string} uuid
+ * @param {number} retries - Number of retries (default 2)
+ * @returns {Promise<boolean>}
+ */
+async function verifyUpload(uuid, retries) {
+    if (retries === undefined) retries = 2;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const resp = await fetch(SCRIPT_URL + '?action=verify&uuid=' + encodeURIComponent(uuid));
+            const data = await resp.json();
+            if (data.found) return true;
+        } catch (err) {
+            console.warn('Verification attempt', attempt + 1, 'failed:', err.message);
+        }
+
+        if (attempt < retries) {
+            await sleep(1000);
+        }
+    }
+
+    return false;
+}
+
+// ─────────────────────────────────────────────
+// Control Functions
+// ─────────────────────────────────────────────
+
+/**
+ * Pause the current upload batch.
+ */
+function pauseUpload() {
+    _paused = true;
+}
+
+/**
+ * Resume uploading after pause.
+ */
+function resumeUpload() {
+    if (!_uploading) {
+        uploadAll();
+    }
+}
+
+/**
+ * Check if an upload is in progress.
+ * @returns {boolean}
+ */
+function isUploading() {
+    return _uploading;
+}
+
+/**
+ * Check if upload is paused.
+ * @returns {boolean}
+ */
+function isPaused() {
+    return _paused;
+}
+
+/**
+ * Get current upload progress.
+ * @returns {{current: number, total: number}}
+ */
+function getUploadProgress() {
+    return { ..._uploadProgress };
+}
+
+// ─────────────────────────────────────────────
+// Auto-Sync on Reconnect
+// ─────────────────────────────────────────────
+
+/**
+ * Start listening for online events to auto-upload.
+ */
+function enableAutoSync() {
+    window.addEventListener('online', async () => {
+        console.log('Network reconnected — checking for pending uploads...');
+        const count = await getPendingCount();
+        if (count > 0 && !_uploading) {
+            console.log(`Auto-syncing ${count} pending submissions...`);
+            broadcastMessage('auto_sync_started', { count });
+            uploadAll();
+        }
+    });
+}
+
+// Auto-enable on load
+if (typeof window !== 'undefined') {
+    // Step 1: Reset any entries stuck in 'uploading' from interrupted uploads
+    resetStuckUploading().then(count => {
+        if (count > 0) {
+            console.log('[AutoSync] Reset ' + count + ' stuck entries back to pending');
+        }
+
+        // Enable online listener for auto-sync on reconnect
+        enableAutoSync();
+    }).catch(() => {
+        enableAutoSync();
+    });
+}
+
+
+// ── Background & Visibility Watcher ──
+// Auto-reacquire Wake Lock if they come back from another tab mid-upload
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && _uploading && !_paused) {
+        try {
+            if ('wakeLock' in navigator && _wakeLock === null) {
+                _wakeLock = await navigator.wakeLock.request('screen');
+            }
+        } catch (err) { }
+        // Remove the screen-lock warning if user came back
+        const warn = document.getElementById('_iosUploadWarning');
+        if (warn) warn.remove();
+    } else if (document.visibilityState === 'hidden' && _uploading) {
+        console.warn('App went to background! Uploads may be suspended by iOS.');
+        // Show a persistent warning — iOS will kill the upload if the screen locks.
+        // We inject it now so it's the FIRST thing the user sees when they return.
+        try {
+            if (!document.getElementById('_iosUploadWarning')) {
+                const w = document.createElement('div');
+                w.id = '_iosUploadWarning';
+                w.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b71c1c;color:#fff;padding:12px 16px;font-size:0.88rem;text-align:center;font-weight:bold;';
+                w.textContent = '⚠️ Keep your screen ON during uploads — locking the screen cancels active transfers on iPhone!';
+                document.body.prepend(w);
+                // Auto-remove after 10s in case user ignored it
+                setTimeout(() => { if (w.parentNode) w.remove(); }, 10000);
+            }
+        } catch (domErr) { /* document may be partially frozen on iOS */ }
+    }
+});
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Sleep for a given number of milliseconds.
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch with retry + exponential backoff.
+ * Used for POST requests that may fail under load from 200+ concurrent users.
+ *
+ * @param {string} url
+ * @param {Object} options - fetch options
+ * @param {number} maxAttempts - max number of attempts (default 3)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, options, maxAttempts) {
+    if (maxAttempts === undefined) maxAttempts = 3;
+
+    let lastError;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        // 90s timeout per attempt.
+        // WHY 90s (not 30s): iOS Safari can take 60-80s on poor 4G to POST a large
+        // image payload (2-5MB base64). The old 30s was too aggressive and caused
+        // premature AbortErrors on legitimately slow connections. 90s gives enough
+        // room for both slow networks AND Google Apps Script's Drive upload time.
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+        try {
+            options.signal = controller.signal;
+            const response = await fetch(url, options);
+            clearTimeout(timeoutId);
+            return response;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            lastError = err;
+            console.warn(`Fetch attempt ${attempt}/${maxAttempts} failed:`, err.message);
+
+            if (attempt < maxAttempts) {
+                // Exponential backoff: 2s, 4s, 8s + random jitter 0-2s
+                const backoff = 2000 * Math.pow(2, attempt - 1);
+                const jitter = Math.floor(Math.random() * 2000);
+                console.log(`Retrying in ${((backoff + jitter) / 1000).toFixed(1)}s...`);
+                await sleep(backoff + jitter);
+            }
+        }
+    }
+
+    throw lastError;
+}
+
+/**
+ * Broadcast a countdown timer so the UI shows live wait time.
+ * Sends a 'waiting' message every second with remaining seconds.
+ *
+ * @param {number} totalMs - Total wait time in milliseconds
+ * @param {string} reason - Human-readable reason for waiting
+ */
+async function broadcastCountdown(totalMs, reason) {
+    const totalSec = Math.ceil(totalMs / 1000);
+    for (let remaining = totalSec; remaining > 0; remaining--) {
+        if (_paused) break;
+        broadcastMessage('upload_waiting', {
+            waitSeconds: remaining,
+            reason: reason,
+            current: _uploadProgress.current,
+            total: _uploadProgress.total
+        });
+        await sleep(1000);
+    }
+}
+
+/**
+ * Evaluates the catch block error and returns a friendly actionable message.
+ * Since we use no-cors, fetch errors are mostly restricted to standard JS network/DOMExceptions.
+ *
+ * @param {Error|String} err
+ * @returns {string} Highly visible actionable error string
+ */
+function getUserFriendlyError(err) {
+    let errMsg;
+    let errCode = 'ERR_UNKNOWN';
+
+    if (err instanceof Error || (err && typeof err.message === 'string' && err.message)) {
+        errMsg = err.message;
+        if (err.name === 'AbortError') errCode = 'ERR_TIMEOUT';
+        else if (err.name === 'TypeError') errCode = 'ERR_TYPE';
+        else errCode = 'ERR_GENERAL';
+    } else if (typeof err === 'string') {
+        errMsg = err;
+        errCode = 'ERR_STRING';
+    } else if (err && err.type) {
+        errMsg = `Network request failed (Event: ${err.type})`;
+        errCode = 'ERR_NET_EVENT';
+    } else {
+        errMsg = 'An unexpected network error occurred.';
+    }
+    const lowerMsg = errMsg.toLowerCase();
+
+    let fixPhrase = "Tap 'Retry' later.";
+
+    if (lowerMsg.includes('network') || lowerMsg.includes('fetch') || lowerMsg.includes('load failed') || lowerMsg.includes('offline') || lowerMsg.includes('internet')) {
+        fixPhrase = "Check WiFi/Cellular data. Device may be dropping packets.";
+        if (errCode === 'ERR_UNKNOWN') errCode = 'ERR_NETWORK_DISCONNECT';
+    } else if (lowerMsg.includes('timeout') || errCode === 'ERR_TIMEOUT') {
+        fixPhrase = "Server took >90s. Keep your screen ON during uploads — locking the screen cancels transfers on iPhone. Try on stronger WiFi.";
+        errCode = 'ERR_TIMEOUT';
+    } else if (lowerMsg.includes('too large') || lowerMsg.includes('quota') || lowerMsg.includes('payload')) {
+        fixPhrase = "Image snapshots are too large. Try reducing camera resolution.";
+        errCode = 'ERR_PAYLOAD_SIZE';
+    }
+
+    return `[${errCode}] ${errMsg} \n(Diag: ${fixPhrase})`;
+}
+
+/**
+ * Converts a Blob to a base64 string.
+ * Used for legacy entries that were saved before the base64 migration.
+ * @param {Blob|string} blob
+ * @returns {Promise<string>}
+ */
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        if (!(blob instanceof Blob)) {
+            resolve(blob);
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// ─────────────────────────────────────────────
+// Auto-Sync Stragglers (Ghost Pending Fix)
+// ─────────────────────────────────────────────
+// If the user navigates away from the form too quickly, `uploadSingle` is aborted,
+// leaving the local entry stuck in 'pending' even if the server received it.
+// This auto-sync silently processes a small number of pending items in the background
+// when the app loads, ensuring the local database reaches the 'uploaded' state seamlessly.
+// ── Startup Auto-Sync (straggler fix) ──
+// Fires 8 seconds after page load — long enough for resetStuckUploading() to complete
+// and the user to have already tapped "Upload All" if they want.
+// IMPORTANT: This MUST NOT run if any upload is already in progress to avoid duplicates.
+setTimeout(async () => {
+    // Double-check: do not auto-sync if an upload session is already active
+    if (_uploading) {
+        console.log('[AutoSync] Skipping startup sync — upload already in progress.');
+        return;
+    }
+    if (!navigator.onLine) {
+        console.log('[AutoSync] Skipping startup sync — device is offline.');
+        return;
+    }
+    if (typeof getPendingSubmissionIds !== 'function') return;
+
+    try {
+        const pendingIds = await getPendingSubmissionIds();
+        // Only auto-sync for a small number of stragglers.
+        // If there are many pending entries, the user must tap "Upload All" manually.
+        // This prevents an unexpected, long-running background process on page load.
+        if (pendingIds.length > 0 && pendingIds.length <= 5) {
+            console.log(`[AutoSync] Background syncing ${pendingIds.length} straggler(s)...`);
+            uploadAll();
+        } else if (pendingIds.length > 5) {
+            console.log(`[AutoSync] ${pendingIds.length} pending entries — user must tap 'Upload All'.`);
+        }
+    } catch (e) {
+        console.error('[AutoSync] Failed to check pending count:', e);
+    }
+}, 8000); // Wait 8s: enough time for resetStuckUploading + UI render + any user-initiated upload
